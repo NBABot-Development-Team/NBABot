@@ -1,5 +1,4 @@
-
-![Logo](https://i.imgur.com/mCr1gL0.png)
+<img src="https://i.imgur.com/mCr1gL0.png" width=300>
 
 
 # NBABot

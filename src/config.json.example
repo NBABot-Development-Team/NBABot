@@ -1,0 +1,16 @@
+{
+    "token":"INSERT TOKEN HERE",
+    "token2": "INSERT TOKEN2 HERE",
+    "clientId": "INSERT CLIENT ID 1",
+    "clientId2": "INSERT CLIENT ID 2",
+    "databaseUsername": "INSERT DATABASE USERNAME",
+    "databasePassword": "INSERT DATABASE PASSWORD",
+    "databaseName": "nba",
+    "dbl": "ignore this",
+    "dblAuth": "ignore this",
+    "transactionChannel": "CHANNEL FOR AUTOMATED TRANSACTION POSTS",
+    "scoreChannel": "CHANNEL FOR AUTOMATED SCORE POSTS",
+    "newsChannel": "CHANNEL FOR AUTOMATED NEWS",
+    "injuriesChannel": "CHANNEL FOR AUTOMATED INJURIES",
+    "nbaGuild": "GUILD TO POST AUTOMATED MESSAGES IN"
+}

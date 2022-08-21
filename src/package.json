@@ -1,0 +1,19 @@
+{
+  "dependencies": {
+    "@discordjs/builders": "^0.15.0",
+    "@discordjs/rest": "^0.1.0-canary.0",
+    "@sapphire/time-utilities": "^1.4.6",
+    "canvas": "^2.8.0",
+    "chalk": "^4.1.2",
+    "colorette": "^2.0.16",
+    "dblapi.js": "^2.4.1",
+    "discord-api-types": "^0.23.1",
+    "discord.js": "^13.8.1",
+    "express": "^4.17.3",
+    "http": "^0.0.1-security",
+    "mysql": "^2.18.1",
+    "node-fetch": "^2.6.5",
+    "path": "^0.12.7",
+    "wikipedia": "^1.1.6"
+  }
+}

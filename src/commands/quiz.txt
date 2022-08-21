@@ -1,0 +1,12 @@
+/*
+
+Questions like
+What is Steph's current PPG?
+Button1 button2 button3
+
+Right = xp
+xp level up = $ in simulated betting system
+
+money as a prize, also some sort of collectible?
+
+*/

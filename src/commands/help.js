@@ -48,6 +48,11 @@ module.exports = {
 				new Discord.MessageButton()
 					.setURL(`https://top.gg/bot/544017840760422417/vote`)
 					.setLabel(`Vote`)
+					.setStyle(`LINK`),
+
+				new Discord.MessageButton()
+					.setURL(`https://github.com/EliotChignell/NBABot`)
+					.setLabel(`GitHub`)
 					.setStyle(`LINK`)
 			);
 			

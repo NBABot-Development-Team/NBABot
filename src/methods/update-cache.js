@@ -47,9 +47,7 @@ module.exports = {
 						}
 
 						let UTCDateObject = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate(), new Date().getUTCHours(), new Date().getUTCMinutes(), new Date().getUTCSeconds());
-						console.log(new Date(UTCDateObject));
 						let easternDateObject = new Date(UTCDateObject - 1000 * 60 * 60 * 4);
-						console.log(new Date(easternDateObject));
 
 						// let trueDate = `${easternDateObject.getFullYear()}${(parseInt(easternDateObject.getMonth()) + 1 < 10) ? `0${easternDateObject.getMonth() + 1}` : easternDateObject.getMonth() + 1}${(parseInt(easternDateObject.getDate()) < 10) ? `0${easternDateObject.getDate()}` : easternDateObject.getDate()}`;
 						let trueDate = easternDateObject.toISOString().substring(0, 10).split(`-`).join(``);

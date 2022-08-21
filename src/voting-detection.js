@@ -30,7 +30,7 @@ const port = 5000;
 
 // Sorting out dbl
 const dbl = new DiscordBotList(config.dbl, {
-	webhookAuth: `knicksInSix`,
+	webhookAuth: config.dblAuth,
 	webhookServer: server,
 	webhookPort: port
 });

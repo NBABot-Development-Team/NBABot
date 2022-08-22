@@ -43,7 +43,9 @@ if (runDatabase) {
 // Sorting out command structure
 client.commands = new Discord.Collection();
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
-for (const file of commandFiles) {
+commandLoop: for (const file of commandFiles) {
+	let databaseInvolvedCommands = [`balance`, `bet`, `bets`, `claim`, `img-add`, `img-delete`, `img`, `imgs`, `leaderboard`, `rbet`, `reset-balance`, `settings`];
+	if (databaseInvolvedCommands.includes(file.split(`.`)[0]) && !runDatabase) continue commandLoop;
 	const command = require(`./commands/${file}`);
 	client.commands.set(command.data.name, command);
 }

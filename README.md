@@ -14,7 +14,7 @@
 </p>
 
 # The Story Thus Far
-Hi, we're [Eliot](www.github.com/EliotChignell) and [Justin](www.github.com/freejstnalxndr), and we are the creators of NBABot. We met around 2018 when the project was in its very early stages. We are fans of the Suns and Knicks respectively, Eliot being from New Zealand, and Justin being from New York.
+Hi, we're [Eliot](https://www.github.com/EliotChignell) and [Justin](https://www.github.com/freejstnalxndr), and we are the creators of NBABot. We met around 2018 when the project was in its very early stages. We are fans of the Suns and Knicks respectively, Eliot being from New Zealand, and Justin being from New York.
 
 NBABot is truly influenced by our users feedback and our passion for the game of basketball. When NBABot first started, we had no clue it would become as big as it is today, and we owe that to our users. We want people to get involved, give feedback, and be able to see how much this project means to us.  Some of the premier features of the bot are:
 
@@ -31,7 +31,7 @@ The installation of NBABot to run on your own is something that requires a previ
 # How to Support Us
 NBABot, as much as it is a passion project, is very time consuming and involves a lot of upfront cost. We hope to not only one day be able to pay for the server costs (around $90 USD per month), but also further development and in bringing on other experts to help us with Web Development or marketing.
 
-If you want to support us monetarily, you can support on [Patreon](www.patreon.com/nbabot).
+If you want to support us monetarily, you can support on [Patreon](https://www.patreon.com/nbabot).
 
 Otherwise, you can vote for us on [top.gg](https://top.gg/bot/544017840760422417), and you'll also recieve $10 in the virtual betting system!
 

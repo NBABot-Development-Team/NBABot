@@ -12,5 +12,6 @@
     "scoreChannel": "CHANNEL FOR AUTOMATED SCORE POSTS",
     "newsChannel": "CHANNEL FOR AUTOMATED NEWS",
     "injuriesChannel": "CHANNEL FOR AUTOMATED INJURIES",
-    "nbaGuild": "GUILD TO POST AUTOMATED MESSAGES IN"
+    "nbaGuild": "GUILD TO POST AUTOMATED MESSAGES IN",
+    "activityText": "Playing ... text"
 }

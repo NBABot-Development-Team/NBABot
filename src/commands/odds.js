@@ -32,7 +32,7 @@ module.exports = {
             requestedDate = currentDate;
             today = true;
         } else {
-            requestedDate = await formatDate(con, interaction.user.id, requestedDate);
+            requestedDate = await formatDate(requestedDate, con, interaction.user.id);
             if (requestedDate == currentDate) today = true;
             if (!requestedDate) {
                 return await interaction.reply({ content: `Please use today/tomorrow/yesterday or a valid date in mm/dd/yyyy format, e.g. 12/25/2020.` });

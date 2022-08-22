@@ -1,7 +1,7 @@
 // Methods
 const query = require(`./database/query.js`);
 
-module.exports = async (con, id, date) => {
+module.exports = async (date, con = null, id = null) => {
 
 	return new Promise(async resolve => {
 		// JSON files
@@ -35,13 +35,15 @@ module.exports = async (con, id, date) => {
 		// Checking if the numbers are of 2, 2, 4 length
 		if (date.split(`/`)[0].length != 2 || date.split('/')[1].length != 2 || date.split(`/`)[2].length != 4) return;
 
-		// Checking for user date format
-		let dateFormat = await query(con, `SELECT * FROM users WHERE ID = '${id}';`);
-		dateFormat = dateFormat[0].DateFormat;
-		console.log(`dateformat: ${dateFormat}`);
-		if (dateFormat == `i`) { // Switching month and date if international
-			date = `${date.split(`/`)[1]}/${date.split(`/`)[0]}/${date.split(`/`)[2]}`;
-			console.log(`f-1: ${date}`);
+		if (con && id) {
+			// Checking for user date format
+			let dateFormat = await query(con, `SELECT * FROM users WHERE ID = '${id}';`);
+			dateFormat = dateFormat[0].DateFormat;
+			console.log(`dateformat: ${dateFormat}`);
+			if (dateFormat == `i`) { // Switching month and date if international
+				date = `${date.split(`/`)[1]}/${date.split(`/`)[0]}/${date.split(`/`)[2]}`;
+				console.log(`f-1: ${date}`);
+			}
 		}
 
 		// Checking if any perameters are too big

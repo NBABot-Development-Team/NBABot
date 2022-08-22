@@ -1,5 +1,6 @@
 // Core variables
 let runningOriginalNBABot = true; // Change this to false if running on your own bot
+let runDatabase = true;
 
 // Libraries
 const Discord = require(`discord.js`);
@@ -25,17 +26,19 @@ const config = require(`./config.json`);
 
 // Core Discord variables
 const client = new Discord.Client({ intents: [Discord.Intents.FLAGS.GUILDS, Discord.Intents.FLAGS.GUILD_MESSAGES] });
-let clientReady = false;
 
 // Initialising mysql database
-let con = mysql.createConnection({
-	host: `localhost`,
-	user: config.databaseUsername,
-	password: config.databasePassword,
-	database: config.databaseName
-});
-
-con.connect();
+let con;
+if (runDatabase) {
+	con = mysql.createConnection({
+		host: `localhost`,
+		user: config.databaseUsername,
+		password: config.databasePassword,
+		database: config.databaseName
+	});
+	
+	con.connect();
+}
 
 // Sorting out command structure
 client.commands = new Discord.Collection();
@@ -46,7 +49,7 @@ for (const file of commandFiles) {
 }
 
 client.on(`ready`, async () => {
-	module.exports = { con, client };
+	module.exports = { con, client, runDatabase };
 	clientReady = true;
 	logger.ready(`Ready!`);
 	updateActivity();
@@ -250,42 +253,56 @@ client.on(`interactionCreate`, async interaction => {
 	if (!command) return;
 
 	// Logging command contents
-	console.log(`[${interaction.guild.id}][${interaction.user.id}]: ${interaction.commandName}`);
+	let offset = 12; // Converts logging stuff to NZ time, feel free to change this utc offset
+	let localTime = new Date(new Date().getTime() + offset * 60 * 60 * 1000);
+	console.log(`[${localTime.toISOString()}][${interaction.guild.id}][${interaction.user.id}]: ${interaction.commandName}`);
 
-	// Registering user on users database if not already
-	let user = await getUser(con, `users`, interaction.user.id), userExists = true;
-	if (!user) userExists = false;
-	else if (user.length == 0) userExists = false;
-	if (!userExists) await createUser(con, `users`, interaction.user.id);
-	
-	// Registering user on bets database if not already
-	let bets = await getUser(con, `bets`, interaction.user.id), betsExists = true;
-	if (!bets) betsExists = false;
-	else if (bets.length == 0) betsExists = false;
-	if (!betsExists) await createUser(con, `bets`, interaction.user.id);
+	if (runDatabase) {
+		// Registering user on users database if not already
+		let user = await getUser(con, `users`, interaction.user.id), userExists = true;
+		if (!user) userExists = false;
+		else if (user.length == 0) userExists = false;
+		if (!userExists) await createUser(con, `users`, interaction.user.id);
+		
+		// Registering user on bets database if not already
+		let bets = await getUser(con, `bets`, interaction.user.id), betsExists = true;
+		if (!bets) betsExists = false;
+		else if (bets.length == 0) betsExists = false;
+		if (!betsExists) await createUser(con, `bets`, interaction.user.id);
 
-	// Adding guild to Guilds if not already there
-	let guilds = await query(con, `SELECT Guilds FROM users WHERE ID = "${interaction.user.id}";`);
-	if (!guilds) await query(con, `UPDATE users SET Guilds = "${interaction.guild.id}" WHERE ID = "${interaction.user.id}";`);
-	else if (!guilds[0]) await query(con, `UPDATE users SET Guilds = "${interaction.guild.id}" WHERE ID = "${interaction.user.id}";`);
-	else if (!guilds[0].Guilds) await query(con, `UPDATE users SET Guilds = "${interaction.guild.id}" WHERE ID = "${interaction.user.id}";`);
-	else {
-		guilds = guilds[0].Guilds;
-		guilds = guilds.split(`,`);
-		if (!guilds.includes(interaction.guild.id)) {
-			guilds.push(interaction.guild.id);
-			guilds.join(`,`);
-			await query(con, `UPDATE users SET Guilds = "${guilds}" WHERE ID = "${interaction.user.id}";`);
+		// Adding guild to Guilds if not already there
+		let guilds = await query(con, `SELECT Guilds FROM users WHERE ID = "${interaction.user.id}";`);
+		if (!guilds) await query(con, `UPDATE users SET Guilds = "${interaction.guild.id}" WHERE ID = "${interaction.user.id}";`);
+		else if (!guilds[0]) await query(con, `UPDATE users SET Guilds = "${interaction.guild.id}" WHERE ID = "${interaction.user.id}";`);
+		else if (!guilds[0].Guilds) await query(con, `UPDATE users SET Guilds = "${interaction.guild.id}" WHERE ID = "${interaction.user.id}";`);
+		else {
+			guilds = guilds[0].Guilds;
+			guilds = guilds.split(`,`);
+			if (!guilds.includes(interaction.guild.id)) {
+				guilds.push(interaction.guild.id);
+				guilds.join(`,`);
+				await query(con, `UPDATE users SET Guilds = "${guilds}" WHERE ID = "${interaction.user.id}";`);
+			}
 		}
 	}
 
 	// Run command
-	try {
-		await command.execute({ interaction, client, con });
-	} catch (error) {
-		console.log(error);
-		logger.error(error);
-		return interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+	if (runDatabase) {
+		try {
+			await command.execute({ interaction, client, con });
+		} catch (error) {
+			console.log(error);
+			logger.error(error);
+			return interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+		}
+	} else {
+		try {
+			await command.execute({ interaction, client });
+		} catch (error) {
+			console.log(error);
+			logger.error(error);
+			return interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+		}
 	}
 });
 
@@ -325,7 +342,9 @@ methods.updateScores();
 setInterval(methods.updateScores, 1000 * 20);
 
 function updateActivity() {
-	client.user.setActivity(`v3 is out! Use "/help" or "nba update" to update.`);
+	delete require.cache[require.resolve(`./config.json`)];
+	let activityText = require(`./config.json`).activityText;
+	client.user.setActivity(activityText);
 }
 setInterval(updateActivity, 1000 * 60 * 30);
 

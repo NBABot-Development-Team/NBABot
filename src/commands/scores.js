@@ -41,7 +41,11 @@ module.exports = {
 		if (!requestedDate) { // If no date is specified, find today's date
 			requestedDate = currentDate;
 		} else {
-			requestedDate = await formatDate(con, interaction.user.id, requestedDate); // formatting from mm/dd/yyyy to yyyymmdd
+			let { runDatabase } = require(`../bot.js`);
+			if (runDatabase) {
+				requestedDate = await formatDate(requestedDate, con, interaction.user.id);
+			} else requestedDate = await formatDate(requestedDate);
+
 			if (!requestedDate) return await interactionSource.reply({ content: `Please use today/tomorrow/yesterday or a date in mm/dd/yyyy format.` });
 		}
 		

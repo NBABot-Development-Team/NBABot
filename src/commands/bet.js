@@ -54,7 +54,7 @@ module.exports = {
             date = currentDate;
             today = true;
         } else {
-            date = await formatDate(con, interaction.user.id, requestedDate);
+            date = await formatDate(requestedDate, con, interaction.user.id);
             if (!date) return await interaction.reply({ content: `Please use a valid date in mm/dd/yyyy format.` });
         }
 

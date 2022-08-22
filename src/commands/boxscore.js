@@ -42,7 +42,11 @@ module.exports = {
 			delete require.cache[require.resolve(`../cache/today.json`)];
 			requestedDate = require(`../cache/today.json`).links.currentDate;
 		} else {
-			requestedDate = await formatDate(con, interaction.user.id, requestedDate);
+			let { runDatabase } = require(`../bot.js`);
+			if (runDatabase) {
+				requestedDate = await formatDate(requestedDate, con, interaction.user.id);
+			} else requestedDate = await formatDate(requestedDate);
+
 			if (!requestedDate) {
 				return await interactionSource.reply({ content: `Please use today/tomorrow/yesterday or a valid date in mm/dd/yyyy format, e.g. 12/25/2020.` });
 			}
@@ -78,7 +82,7 @@ module.exports = {
 
 		// Ensuring all variables are available
 		if (!gameID || !teamLocationOriginal || !otherTeamLocationOriginal || !gameDetails) {
-			return await interactionSource.reply({ content: `${requestedTeam} did not play on ${requestedDate.substring(4, 6)}/${requestedDate.substring(6, 8)}/${requestedDate.substring(0, 4)}.` });
+			return await interactionSource.reply({ content: `${requestedTeam} did not play on ${new Date(requestedDate.substring(0, 4), parseInt(requestedDate.substring(4, 6)) - 1, requestedDate.substring(6, 8)).toDateString()}.` });
 		}
 		
 		// Getting date object
@@ -109,8 +113,6 @@ module.exports = {
 		if (!b) {
 			return await interactionSource.reply({ content: `An error occurred fetching the boxscore.`});
 		}
-
-		console.log(b);
 
 		// Writing boxscore to cache
 		if (!cachedBoxscore && gameDetails.statusNum == 3) {

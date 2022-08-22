@@ -13,5 +13,7 @@
     "newsChannel": "CHANNEL FOR AUTOMATED NEWS",
     "injuriesChannel": "CHANNEL FOR AUTOMATED INJURIES",
     "nbaGuild": "GUILD TO POST AUTOMATED MESSAGES IN",
-    "activityText": "Playing ... text"
+    "activityText": "Playing ... text",
+    "runningOriginalNBABot": false,
+    "runDatabase": false
 }

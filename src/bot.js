@@ -1,6 +1,7 @@
 // Core variables
-let runningOriginalNBABot = true; // Change this to false if running on your own bot
-let runDatabase = true;
+const config = require(`./config.json`);
+let runningOriginalNBABot = config.runningOriginalNBABot; // Change this to false if running on your own bot
+let runDatabase = config.runDatabase;
 
 // Libraries
 const Discord = require(`discord.js`);
@@ -21,8 +22,6 @@ const getUser = require(`./methods/database/get-user.js`);
 const createUser = require(`./methods/database/create-user.js`);
 const query = require(`./methods/database/query.js`);
 
-// JSON files
-const config = require(`./config.json`);
 
 // Core Discord variables
 const client = new Discord.Client({ intents: [Discord.Intents.FLAGS.GUILDS, Discord.Intents.FLAGS.GUILD_MESSAGES] });

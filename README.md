@@ -53,12 +53,15 @@ The installation of NBABot to run on your own is something that requires a previ
 - `activityText` is the message NBABot has when you click its profile, change this to whatever you like
   - For example, `"activityText": "with stats"`, will change NBABot's activity status to `Playing with stats`.
 - All the rest are unnecessary and only used for the official NBABot.
-8. Go back to your command line and run `node bot.js`.
-9. NBABot should now be running in your server!
+8. Create a `cache` folder in the `src` directory.
+8. You will need to create a file called `today.json` in a `src/cache` directory, then copy the contents [here](http://data.nba.net/10s/prod/v2/today.json) to that file.
+9. Go back to your command line and run `node bot.js`.
+10. NBABot should now be running in your server!
 - To keep it running in the background, I would recommend a package like [pm2](https://pm2.keymetrics.io).
 - If the slash commands do not appear when in NBABot's server, type `nba update` into the server and the commands should be added.
 
 **Note:** NBABot currently is only available in a limited form without the simulated betting and user settings, as those require a MySQL database on your computer. This will later be explained with a guide. If you are confident enough, you can try install MySQL, use the framework database `nba.sql`, then try the database commands, but I cannot guarantee they will work at this stage.
+In other words, betting commands do not work by default as they require installing MySQL.
 
 # How to Support Us
 NBABot, as much as it is a passion project, is very time consuming and involves a lot of upfront cost. We hope to not only one day be able to pay for the server costs (around $90 USD per month), but also further development and in bringing on other experts to help us with Web Development or marketing.

@@ -62,7 +62,9 @@ function updateCommands(ID) {
 		const commands = [];
 		const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 
-		for (const file of commandFiles) {
+		commandLoop: for (const file of commandFiles) {
+			let databaseInvolvedCommands = [`balance`, `bet`, `bets`, `claim`, `img-add`, `img-delete`, `img`, `imgs`, `leaderboard`, `rbet`, `reset-balance`, `settings`];
+			if (databaseInvolvedCommands.includes(file.split(`.`)[0]) && !runDatabase) continue commandLoop;
 			const command = require(`./commands/${file}`);
 			commands.push(command.data.toJSON());
 		}
@@ -109,7 +111,9 @@ client.on(`guildCreate`, async guild => {
 	const commands = [];
 	const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 
-	for (const file of commandFiles) {
+	commandLoop: for (const file of commandFiles) {
+		let databaseInvolvedCommands = [`balance`, `bet`, `bets`, `claim`, `img-add`, `img-delete`, `img`, `imgs`, `leaderboard`, `rbet`, `reset-balance`, `settings`];
+		if (databaseInvolvedCommands.includes(file.split(`.`)[0]) && !runDatabase) continue commandLoop;
 		const command = require(`./commands/${file}`);
 		commands.push(command.data.toJSON());
 	}
@@ -156,7 +160,9 @@ client.on(`messageCreate`, async message => {
 		const commands = [];
 		const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 
-		for (const file of commandFiles) {
+		commandLoop: for (const file of commandFiles) {
+			let databaseInvolvedCommands = [`balance`, `bet`, `bets`, `claim`, `img-add`, `img-delete`, `img`, `imgs`, `leaderboard`, `rbet`, `reset-balance`, `settings`];
+			if (databaseInvolvedCommands.includes(file.split(`.`)[0]) && !runDatabase) continue commandLoop;
 			const command = require(`./commands/${file}`);
 			commands.push(command.data.toJSON());
 		}
@@ -231,7 +237,6 @@ client.on(`messageCreate`, async message => {
 		const dbl = new DiscordBotList(config.dbl);
 
 		let res = await client.shard.fetchClientValues(`guilds.cache.size`);
-		console.log(res);
 		res = res.reduce((a, b) => a + b, 0);
 
 		await dbl.postStats(res);

@@ -28,6 +28,8 @@ And many more. You can check it out by [inviting NBABot](https://discord.com/oau
 # Installation
 The installation of NBABot to run on your own is something that requires a previous knowledge of [discord.js](https://discord.js.org/#/), javascript, and basic coding principals. *We are working on documentation and expect some more news on this front soon.*
 
+__**Watch a video guide for macOS here: [https://www.youtube.com/watch?v=H43I2qVlAJY](https://www.youtube.com/watch?v=H43I2qVlAJY)**__
+
 1. Download NBABot's source code either through downloading it as a .zip file, or with the command `git clone https://https://github.com/NBABot-Development-Team/NBABot.git`.
 2. Install NodeJS on your computer.
 - For MacOS/Linux, I would recommend using [nvm](https://github.com/nvm-sh/nvm).

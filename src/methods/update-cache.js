@@ -143,6 +143,14 @@ module.exports = {
 
 		let json = await getJSON(`http://data.nba.net/10s/prod/v1/${currentDate}/scoreboard.json`);
 
+		// Checking for manual score insertions
+		for (var i = 0; i < json.games.length; i++) {
+			if (currentDate == `20220930` && json.games[i].gameId == `0012200001`) {
+				json.games[i].vTeam.score = `96`;
+				json.games[i].hTeam.score = `87`;
+			}
+		}
+
 		// Writing to cache
 		if (!fs.existsSync(`./cache/${currentDate}/`)) fs.mkdir(`./cache/${currentDate}/`, err => { if (err) throw err; });
 		fs.writeFile(`./cache/${currentDate}/scoreboard.json`, JSON.stringify(json), async err => {

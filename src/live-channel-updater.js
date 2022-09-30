@@ -10,6 +10,7 @@ const config = require(`./config.json`);
 // Assets
 const teamColors = require(`./assets/teams/colors.json`);
 const teamEmojis = require(`./assets/teams/emojis.json`);
+const teams = require(`./assets/teams/details.json`);
 
 // Methods
 const getJSON = require(`./methods/get-json.js`);
@@ -87,8 +88,10 @@ async function Transactions() {
 // Every 20 minutes
 async function Scores() {
     let lastEdited = await getValue(con, `scores_games_finished`, `Date`, `lastedit`);
-    lastEdited = parseInt(lastEdited);
+    lastEdited = parseInt(lastEdited.Finished);
+    console.log(`lastedit difference: ${new Date().getTime() - 1000 * 60 * 20} ${lastEdited}`);
     if (new Date().getTime() - 1000 * 60 * 20 < lastEdited) return;
+    console.log(`Got past lastedit difference`);
 
     delete require.cache[require.resolve(`./cache/today.json`)];
     let currentDate = require(`./cache/today.json`).links.currentDate;
@@ -97,8 +100,20 @@ async function Scores() {
     let beforeDateObject = new Date(currentDateObject.getTime() - 86400000);
     let beforeDate = beforeDateObject.toISOString().substring(0, 10).split(`-`).join(``);
 
-    let beforeDateGamesFinished = await getValue(con, `scores_games_finished`, `Date`, beforeDate);
-    beforeDateGamesFinished = beforeDateGamesFinished.Finished;
+    let beforeDateGamesFinished;
+    try {
+        beforeDateGamesFinished = await getValue(con, `scores_games_finished`, `Date`, beforeDate);
+    } catch (e) {
+        await query(con, `INSERT INTO scores_games_finished VALUES ("${beforeDate}", "n");`);
+    }
+
+    if (!beforeDateGamesFinished) {
+        await query(con, `INSERT INTO scores_games_finished VALUES ("${beforeDate}", "n");`);
+        beforeDateGamesFinished = await getValue(con, `scores_games_finished`, `Date`, beforeDate);
+    }
+    beforeDateGamesFinished = beforeDateGamesFinished?.Finished;
+
+    console.log(`Got to after beforeDate stuff`);
 
     if (beforeDateGamesFinished) {
         if (beforeDateGamesFinished == `n`) {
@@ -112,12 +127,15 @@ async function Scores() {
 
     let b = await getJSON(`http://data.nba.net/10s/prod/v1/${currentDate}/scoreboard.json`);
 
+    console.log(b);
+
     if (!b) return;
     if (!b.games) return;
     if (b.games.length == 0) return;
 
     let dateString = new Date(currentDate.substring(0, 4), parseInt(currentDate.substring(4, 6)) - 1, currentDate.substring(6, 8)).toDateString();
 
+    console.log(`Got to embed`);
     let embed = new Discord.MessageEmbed()
         .setTitle(`<:NBA:582679355373649950> Scores for ${dateString}`)
         .setFooter({ text: `Last edited: `})
@@ -144,7 +162,7 @@ async function Scores() {
             vTeam = {nickname: c.vTeam.triCode};
         }
 
-        let str1 = `${(c.statusNum == 1) ? `(${c.vTeam.win}-${c.vTeam.loss})` : ``} ${teamEmojis[vTeam.nickname]}${(c.statusNum == 3 && parseInt(c.vTeam.score) > parseInt(c.hTeam.score)) ? `__` : ``}${vTeam.nickname}${(c.statusNum == 3 && parseInt(c.vTeam.score) > parseInt(c.hTeam.score)) ? `__` : ``} ${c.vTeam.score} @ ${c.hTeam.score} ${(c.statusNum == 3 && parseInt(c.hTeam.score) > parseInt(c.vTeam.score)) ? `__` : ``}${hTeam.nickname}${(c.statusNum == 3 && parseInt(c.hTeam.score) > parseInt(c.vTeam.score)) ? `__` : ``} ${teamEmojis[hTeam.nickname]}${(c.statusNum == 1) ? `(${c.hTeam.win}-${c.hTeam.loss})` : ``}${(c.statusNum == 1) ? `` : ((c.statusNum == 2) ? `${(c.period.current > 4) ? ` | OT` : ` | Q`}${c.period.current} ${c.clock}` : ` | FINAL ${(c.period.current > 4) ? `${c.period.current - 4}OT` : ``}`)}`;
+        let str1 = `${(c.statusNum == 1) ? `(${c.vTeam.win}-${c.vTeam.loss})` : ``} ${teamEmojis[c.vTeam.triCode]}${(c.statusNum == 3 && parseInt(c.vTeam.score) > parseInt(c.hTeam.score)) ? `__` : ``}${vTeam.nickname}${(c.statusNum == 3 && parseInt(c.vTeam.score) > parseInt(c.hTeam.score)) ? `__` : ``} ${c.vTeam.score} @ ${c.hTeam.score} ${(c.statusNum == 3 && parseInt(c.hTeam.score) > parseInt(c.vTeam.score)) ? `__` : ``}${hTeam.nickname}${(c.statusNum == 3 && parseInt(c.hTeam.score) > parseInt(c.vTeam.score)) ? `__` : ``} ${teamEmojis[c.hTeam.triCode]}${(c.statusNum == 1) ? `(${c.hTeam.win}-${c.hTeam.loss})` : ``}${(c.statusNum == 1) ? `` : ((c.statusNum == 2) ? `${(c.period.current > 4) ? ` | OT` : ` | Q`}${c.period.current} ${c.clock}` : ` | FINAL ${(c.period.current > 4) ? `${c.period.current - 4}OT` : ``}`)}`;
         let str2 = `${(c.nugget.text) ? ((c.nugget.text != `` || c.nugget.text != ` `) ? `Summary: ${c.nugget.text}` : ((c.statusNum == 1) ? `` : `...`)) : ((c.statusNum == 1) ? `` : `...`)}`;
 
         if (c.playoffs) str2 += `\n${c.playoffs.seriesSummaryText}`; // Playoffs series summary
@@ -156,21 +174,35 @@ async function Scores() {
         embed.addField(str1, str2);
     }
 
-    if (gamesStillOn == 0) {
-        await query(con, `UPDATE TABLE scores_games_finished SET Finished = 'y' WHERE Date = '${currentDate}';`);
-    } else await query(con, `UPDATE TABLE scores_games_finished SET Finished = 'n' WHERE Date = '${currentDate}';`);
+    console.log(`Got past data insertion`);
 
+    // Checking that today's finished games is in the database
+    let scores_games_finished_today;
+    try {
+        scores_games_finished = await getValue(con, `scores_games_finished`, `Date`, currentDate);
+    } catch (e) {
+        await query(con, `INSERT INTO scores_games_finished VALUES ("${currentDate}", "n");`);
+    }
+    if (!scores_games_finished) await query(con, `INSERT INTO scores_games_finished VALUES ("${currentDate}", "n");`);
+
+    if (gamesStillOn == 0) {
+        await query(con, `UPDATE scores_games_finished SET Finished = "y" WHERE Date = "${currentDate}";`);
+    } else await query(con, `UPDATE scores_games_finished SET Finished = "n" WHERE Date = "${currentDate}";`);
+
+    console.log(`About to send/edit, createMessage: ${createMessage}`);
     if (createMessage) {
         let channel = await client.channels.fetch(config.scoreChannel);
         let message = await channel.send({ embeds: [embed] });
         await query(con, `INSERT INTO scores_messages VALUES ('${currentDate}', '${config.nbaGuild}-${config.scoreChannel}-${message.id}');`);
+        await query(con, `UPDATE TABLE scores_games_finished SET Finished = "${new Date().getTime()}" WHERE Date = "lastedit";`);
     } else {
         try {
-            let channel = await client.channels.fetch(config.scoreChannel);
             let details = await getValue(con, `scores_messages`, `Date`, currentDate);
             details = details.Details;
+            let channel = await client.channels.fetch(details.split(`-`)[1]);
             let message = await channel.messages.fetch(details.split(`-`)[2]);
-            await message.edit(embed);
+            await message.edit({ embeds: [embed] });
+            await query(con, `UPDATE scores_games_finished SET Finished = "${new Date().getTime()}" WHERE Date = "lastedit";`);
         } catch (e) {
             console.log(e);
         }
@@ -188,6 +220,7 @@ async function donatorScores() {
         if (user.Donator != `y`) continue donatorLoop;
         if (!user.ScoreChannels) continue donatorLoop;
         let userChannels = user.ScoreChannels.split(`,`);
+        if (!userChannels[0]) continue donatorLoop;
         for (var j = 0; j < userChannels.length; j++) {
             channels.push(userChannels[j]);
         }

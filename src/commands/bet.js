@@ -108,7 +108,12 @@ module.exports = {
         payout = payout.toFixed(2);
 
         // Checking if the date is a column in bets, if not create
-        let betsFromDate = await query(con, `SELECT d${date} FROM bets;`);
+        let betsFromDate;
+        try {
+            betsFromDate = await query(con, `SELECT d${date} FROM bets;`);
+        } catch (e) {
+            await query(con, `ALTER TABLE bets ADD d${date} varchar(512);`);
+        }
         if (!betsFromDate) await query(con, `ALTER TABLE bets ADD d${date} varchar(512);`);
 
         let existingBetsFromDate = await query(con, `SELECT d${date} FROM bets WHERE ID = "${interaction.user.id}";`);

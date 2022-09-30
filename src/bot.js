@@ -154,7 +154,10 @@ client.on(`messageCreate`, async message => {
 	let v2commands = [`boxscore`, `box`, `bs`, `b`, `compare-players`, `compare`, `news`, `player-info`, `player-stats`, `roster`, `schedule`, `scores`, `s`, `help`];
 	let args = message.content.toLowerCase().split(` `);
 
-	if (message.content.toLowerCase() == `nba update`) {
+	if (!args) return;
+	if (!args[0]) return;
+
+	if (args[1].toLowerCase() == `update`) {
 		let msg = await message.channel.send(`Updating...`);
 
 		const commands = [];
@@ -226,13 +229,9 @@ client.on(`messageCreate`, async message => {
 		}
 	}
 
-	if ([`401649168948396032`, `234792150338895872`].includes(message.author.id) && message.content.startsWith(`/eval`)) {
-		let response = eval(message.content.split(`/eval `).join(``));
-		console.log(response);
-		return message.channel.send(response);
-	}
+	if (![`401649168948396032`, `234792150338895872`].includes(message.author.id)) return;
 
-	if ([`401649168948396032`, `234792150338895872`].includes(message.author.id) && message.content.toLowerCase() == `nba post` && runningOriginalNBABot) {
+	if (args[1].toLowerCase() == `post` && runningOriginalNBABot) {
 		const DiscordBotList = require(`dblapi.js`);
 		const dbl = new DiscordBotList(config.dbl);
 
@@ -244,8 +243,41 @@ client.on(`messageCreate`, async message => {
 		return await message.channel.send(`Posted ${res} server count.`);
 	}
 
-	if ([`401649168948396032`, `234792150338895872`].includes(message.author.id) && message.content.toLowerCase() == `nba update-all-commands`) {
-		updateAllServerCommands();
+	switch(args[1].toLowerCase()) {
+		case `eval`:
+			let response = eval(message.content.split(`@<${config.clientId}> eval`).join(``));
+			console.log(response);
+			return message.channel.send(response);
+			break;
+
+		case `update-all-commands`:
+			updateAllServerCommands();
+			break;
+
+		case `update-odds`:
+			// @<> updateodds 20220930 GSW 110 WAS -200
+			if (args.length < 7) return await message.channel.send(`7 arguments required.`);
+
+			let obj = require(`./cache/${args[2]}/odds.json`);
+			obj[`${args[3].toUpperCase()} @ ${args[5].toUpperCase()}`] = {awayTeamOdds: {moneyLine: parseInt(args[4])}, homeTeamOdds: {moneyLine: parseInt(args[6])}};
+	
+			fs.writeFileSync(`./cache/${args[2]}/odds.json`, JSON.stringify(obj), err => console.log(err));
+	
+			return await message.channel.send(`Odds updated! New ${args[2]} odds:\n\`${JSON.stringify(obj)}\``);
+			break;
+
+		case `user-stats`:
+			let totalCount = await query(con, `SELECT COUNT(*) FROM users;`);
+			totalCount = totalCount[0][`COUNT(*)`];
+			return await message.channel.send(`Total: \`${totalCount}\``);
+			break;
+
+		case `bet-stats`:
+			let activeBetCount = await query(con, `SELECT COUNT(*) FROM bets WHERE d${args[2]} IS NOT NULL;`);
+			activeBetCount = activeBetCount[0][`COUNT(*)`];
+			return await message.channel.send(`${args[2]}: \`${activeBetCount}\``);
+			break;
+		
 	}
 });
 
@@ -341,8 +373,8 @@ const methods = require(`./methods/update-cache.js`);
 methods.updateDate();
 setInterval(methods.updateDate, 1000 * 60 * 5);
 
-methods.updateOdds();
-setInterval(methods.updateOdds, 1000 * 60 * 60);
+// methods.updateOdds();
+// setInterval(methods.updateOdds, 1000 * 60 * 60);
 
 methods.updateScores();
 setInterval(methods.updateScores, 1000 * 20);

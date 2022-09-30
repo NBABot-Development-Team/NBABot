@@ -130,6 +130,12 @@ module.exports = {
 		await update();
 	},
 
+	async updateOodsTAB() {
+		// https://api.beta.tab.com.au/v1/tab-info-service/sports/Basketball/competitions/NBA?jurisdiction=NSW&numTopMarkets=5
+
+		let odds = await getJSON(`https://api.beta.tab.com.au/v1/tab-info-service/sports/Basketball/competitions/NBA?jurisdiction=NSW&numTopMarkets=5`);
+	},
+
 	async updateScores() {
 		// Getting currentDate
 		delete require.cache[require.resolve(`../cache/today.json`)];

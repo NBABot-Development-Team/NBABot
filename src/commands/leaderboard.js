@@ -48,7 +48,7 @@ module.exports = {
 
 			if (user.ID == interaction.user.id) {
 				if (i > 10) {
-					embed.addField(`${i}) @${username.username} - \`$${user.Balance.toFixed(2).toString()}\``, `_Betting record:_ \`${user.Correct} - ${user.Wrong}\` (${convertToPercentage(user.Correct, user.Correct + user.Wrong)})`);
+					embed.addField(`...\n${i}) @${username.username} - \`$${user.Balance.toFixed(2).toString()}\``, `_Betting record:_ \`${user.Correct} - ${user.Wrong}\` (${convertToPercentage(user.Correct, user.Correct + user.Wrong)})`);
 					break userLoop;
 				}
 				authorObject = user;

@@ -31,7 +31,7 @@ module.exports = {
         .addBooleanOption(option => option.setName(`per36`).setDescription(`Whether you want to adjust each player's stats per 36 minutes played.`)),
     
     async execute(variables) {
-        let { interaction } = variables;
+        let { interaction, ad } = variables;
 
         await interaction.deferReply();
 
@@ -210,6 +210,8 @@ module.exports = {
                 .setTitle("Player Comparison:")
                 .setColor(teamColors.NBA)
                 .setImage(`attachment://${fileName}`);
+
+            if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });
 
             //Reply
             const img = new Discord.MessageAttachment(c.toBuffer(), fileName);

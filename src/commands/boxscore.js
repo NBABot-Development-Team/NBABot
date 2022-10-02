@@ -26,7 +26,7 @@ module.exports = {
 		.addStringOption(option => option.setName(`date`).setDescription(`Tomorrow/yesterday/tomorrow or a date in mm/dd/yyyy format.`)),
 	
 	async execute(variables) {
-		let { interaction, con } = variables;
+		let { interaction, con, ad } = variables;
 		let interactionSource = interaction;
 
 		let requestedTeam = interactionSource.options.getString(`team`);
@@ -177,6 +177,8 @@ module.exports = {
 						.setLabel(`NBA.com`)
 						.setStyle(`LINK`),
 				);
+
+			if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });
 
 			if (update) {
 				await interaction.update({ embeds: [embed], components: [row] });

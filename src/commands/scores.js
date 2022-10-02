@@ -23,7 +23,7 @@ module.exports = {
 		.addStringOption(option => option.setName(`team`).setDescription(`The specific team whose score you want to see.`)),
 		
 	async execute(variables) {
-		let { interaction, con } = variables;
+		let { interaction, con, ad } = variables;
 		let interactionSource = interaction;
 
 		// Getting date
@@ -197,6 +197,8 @@ module.exports = {
 				embed.addField(str1, str2);
 				embedsAdded++;
 			}
+
+			if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });
 
 			if (update) {
 				if (requestedDate) {

@@ -21,7 +21,7 @@ module.exports = {
         .addStringOption(option => option.setName(`team`).setDescription(`A team, e.g. PHX or Lakers.`).setRequired(true)),
 
 	async execute(variables) {
-		let { interaction } = variables;
+		let { interaction, ad } = variables;
 
         let team = interaction.options.getString(`team`);
         team = formatTeam(team);
@@ -112,6 +112,8 @@ module.exports = {
                 .setTitle(`${months[selectedMonth]} ${currentYear} Schedule for ${team}:`)
                 .setColor(teamColors[team])
                 .setDescription(description);
+
+            if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });
 
             if (update) {
                 await currentInteraction.update({ embeds: [embed], components: [row] });

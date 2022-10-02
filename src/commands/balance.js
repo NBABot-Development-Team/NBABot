@@ -17,7 +17,7 @@ module.exports = {
 		.setDescription('Get your balance in the simulated bettings system.'),
     
 	async execute(variables) {
-		let { interaction, con } = variables;
+		let { interaction, con, ad } = variables;
 
         let user = await getUser(con, `users`, interaction.user.id);
         user = user[0];
@@ -30,9 +30,11 @@ module.exports = {
             .addField(`Description`, `${user.Description}`, false)
             .addField(`Balance`, `$${user.Balance.toFixed(2)}`, true)
             .addField(`Favourite Team`, `${user.FavouriteTeam} ${teamEmojis[user.FavouriteTeam]}`, true)
-            .addField(`Donator`, (user.Donator == `y`) ? `Yes` : `No`, true)
+            .addField(`Donator`, (user.Donator == `y`) ? `Yes (NBA Chamption Donator)` : ((user.Donator == `f`) ? `Yes (Finals MVP Donator)` : `No`), true)
             .addField(`Betting Record`, `${user.Correct}-${user.Wrong}`, true)
             .addField(`Accuracy`, convertToPercentage(user.Correct, user.Correct + user.Wrong), true);
+
+        if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });
 
         return await interaction.reply({ embeds: [embed] });
 	},

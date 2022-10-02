@@ -21,7 +21,7 @@ module.exports = {
         .addStringOption(option => option.setName(`season`).setDescription(`A specified season, e.g. 2019-20.`)),
     
 	async execute(variables) {
-		let { interaction } = variables;
+		let { interaction, ad } = variables;
 
         // Getting today.json
         delete require.cache[require.resolve(`../cache/today.json`)];
@@ -70,6 +70,7 @@ module.exports = {
         }
 
         embed.setDescription(description);
+        if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });
         return await interaction.reply({ embeds: [embed] });
     },
 };

@@ -16,7 +16,7 @@ module.exports = {
         .addStringOption(option => option.setName(`setting`).setDescription(`Leave blank for the entire league, or specify a conference/division.`)),
     
 	async execute(variables) {
-		let { interaction } = variables;
+		let { interaction, ad } = variables;
 
 		let setting = interaction.options.getString(`setting`);
         let teams, json;
@@ -105,6 +105,7 @@ module.exports = {
         }
 
         embed.setDescription(description);
+        if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });
 
         return await interaction.reply({ embeds: [embed] });
 	},

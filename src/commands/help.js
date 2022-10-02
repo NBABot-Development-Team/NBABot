@@ -11,7 +11,7 @@ module.exports = {
 		.setDescription(`NBABot's commands and other useful info`),
 
 	async execute(variables) {
-		let { interaction } = variables;
+		let { interaction, ad } = variables;
 
 		const commands = {
 			nba: [`scores`, `boxscore`, `player-stats`, `player-info`, `compare-players`, `standings`, `schedule`, `roster`, `team-info`, `teams`, `news`, `transactions`],
@@ -55,6 +55,8 @@ module.exports = {
 					.setLabel(`GitHub`)
 					.setStyle(`LINK`)
 			);
+
+		if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });
 			
 		await interaction.reply({ embeds: [embed], components: [row] });
 	},

@@ -23,7 +23,7 @@ module.exports = {
         .addStringOption(option => option.setName(`date`).setDescription(`today/tomorrow/yesterday or a date in mm/dd/yyyy format.`)),
     
 	async execute(variables) {
-		let { interaction, con } = variables;
+		let { interaction, con, ad } = variables;
 
         // Interaction options
         let requestedTeam = interaction.options.getString(`team`),
@@ -159,6 +159,7 @@ module.exports = {
             .setColor(0x5CB85C)
             .addField(`Details:`, `**Game:** ${teams.join(` @ `)} on ${new Date(date.substring(0, 4), parseInt(date.substring(4, 6)) - 1, parseInt(date.substring(6, 8))).toDateString()}\n**Team**: ${team}\n**Amount placed**: $${amount}\n**Possible payout**: $${payout}`);
 
+        if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });
         if (replacedBet) embed.setFooter({ text: `Note: Your previous bet of $${replacedBet[1]} on ${replacedBet[0]} was automatically replaced.` });
 
         return await interaction.reply({ embeds: [embed] });

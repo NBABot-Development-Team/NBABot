@@ -39,6 +39,17 @@ module.exports = {
                 }).addChoices({
                     name: `International (dd/mm/yyyy)`,
                     value: `international`
+                }).setRequired(true)))
+        .addSubcommand(subcommand => 
+            subcommand
+                .setName(`ads`)
+                .setDescription(`(Donator only) Choose to have ads or not.`)
+                .addStringOption(option => option.setName(`choice`).setDescription(`Yes for ads, No for no ads`).addChoices({
+                    name: `Yes`,
+                    value: `yes`
+                }).addChoices({
+                    name: `No`,
+                    value: `no`
                 }).setRequired(true))),
     
 	async execute(variables) {
@@ -79,6 +90,21 @@ module.exports = {
                 embed = new Discord.MessageEmbed()
                     .setColor(teamColors.NBA)
                     .addField(`Success! Changed your date format to \`${format}\`.`, `Use commands with dates to try this out.`);
+
+                return await interaction.reply({ embeds: [embed] });
+                break;
+
+            case `ads`:
+                let user = await query(con, `SELECT * FROM users WHERE ID = "${interaction.user.id}";`);
+                user = user[0];
+                if (user.Donator != `y` && user.Donator != `f`) return await interaction.reply(`Only donators can choose whether they want ads or not. Learn more with \`/donate\`.`);
+
+                let choice = interaction.options.getString(`choice`);
+                await query(con, `UPDATE users SET Ads = "${(choice == `yes`) ? `y` : `n`}" WHERE ID = "${interaction.user.id}";`);
+
+                embed = new Discord.MessageEmbed()
+                    .setColor(teamColors.NBA)
+                    .addField(`Success! Changed your ad preference to \`${choice}\`.`, `Use any commands with embeds to see this change.`);
 
                 return await interaction.reply({ embeds: [embed] });
                 break;

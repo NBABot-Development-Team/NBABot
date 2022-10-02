@@ -16,7 +16,7 @@ module.exports = {
 		.addBooleanOption(option => option.setName(`global`).setDescription(`Whether you want the leaderboard requested to be global or just for your server.`)),
     
 	async execute(variables) {
-		let { interaction, con, client } = variables;
+		let { interaction, con, client, ad } = variables;
 
 		await interaction.deferReply();
 
@@ -58,7 +58,7 @@ module.exports = {
 			if (authorObject && i > 10) break userLoop;
 		}
 
-		console.log(embed);
+		if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });
 
 		return interaction.editReply({ embeds: [embed] });
 ß

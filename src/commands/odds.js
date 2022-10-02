@@ -18,7 +18,7 @@ module.exports = {
         .addStringOption(option => option.setName(`date`).setDescription(`Tomorrow/yesterday/tomorrow or a date in mm/dd/yyyy format.`)),
     
 	async execute(variables) {
-		let { con, interaction } = variables;
+		let { con, interaction, ad } = variables;
 
         // Getting currentDate
         delete require.cache[require.resolve(`../cache/today.json`)];
@@ -106,6 +106,8 @@ module.exports = {
                 }
             }
         }
+
+        if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });
 
         return await interaction.reply({ embeds: [embed] });
 	},

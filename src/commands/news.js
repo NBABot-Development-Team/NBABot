@@ -15,7 +15,7 @@ module.exports = {
 		.setDescription(`Get the latest basketball headlines from ESPN.`),
     
 	async execute(variables) {
-		let { interaction } = variables;
+		let { interaction, ad } = variables;
 
 		let json = await getJSON(`http://site.api.espn.com/apis/site/v2/sports/basketball/nba/news`);
 
@@ -30,6 +30,8 @@ module.exports = {
         for (var i = 0; i < json.articles.length; i++) {
             embed.addField(`${i + 1}) ${json.articles[i].headline}${(i == randomArticle) ? ` (Pictured)` : ``}`, `${json.articles[i].description} [Link](${json.articles[i].links.web.href})`);
         }
+        
+        if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });
 
         return await interaction.reply({ embeds: [embed] });
 	},

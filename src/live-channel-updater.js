@@ -91,7 +91,6 @@ async function Scores() {
     lastEdited = parseInt(lastEdited.Finished);
     console.log(`lastedit difference: ${new Date().getTime() - 1000 * 60 * 20} ${lastEdited}`);
     if (new Date().getTime() - 1000 * 60 * 20 < lastEdited) return;
-    console.log(`Got past lastedit difference`);
 
     delete require.cache[require.resolve(`./cache/today.json`)];
     let currentDate = require(`./cache/today.json`).links.currentDate;
@@ -113,8 +112,6 @@ async function Scores() {
     }
     beforeDateGamesFinished = beforeDateGamesFinished?.Finished;
 
-    console.log(`Got to after beforeDate stuff`);
-
     if (beforeDateGamesFinished) {
         if (beforeDateGamesFinished == `n`) {
             currentDate = beforeDate;
@@ -127,15 +124,12 @@ async function Scores() {
 
     let b = await getJSON(`http://data.nba.net/10s/prod/v1/${currentDate}/scoreboard.json`);
 
-    console.log(b);
-
     if (!b) return;
     if (!b.games) return;
     if (b.games.length == 0) return;
 
     let dateString = new Date(currentDate.substring(0, 4), parseInt(currentDate.substring(4, 6)) - 1, currentDate.substring(6, 8)).toDateString();
 
-    console.log(`Got to embed`);
     let embed = new Discord.MessageEmbed()
         .setTitle(`<:NBA:582679355373649950> Scores for ${dateString}`)
         .setFooter({ text: `Last edited: `})
@@ -148,6 +142,8 @@ async function Scores() {
     for (var i = 0; i < b.games.length; i++) {
         let hTeam, vTeam;
         let c = b.games[i];
+        console.log(c.vTeam);
+        console.log(c.hTeam);
         
         if (c.statusNum == 2) gamesStillOn++;
 
@@ -162,7 +158,8 @@ async function Scores() {
             vTeam = {nickname: c.vTeam.triCode};
         }
 
-        let str1 = `${(c.statusNum == 1) ? `(${c.vTeam.win}-${c.vTeam.loss})` : ``} ${teamEmojis[c.vTeam.triCode]}${(c.statusNum == 3 && parseInt(c.vTeam.score) > parseInt(c.hTeam.score)) ? `__` : ``}${vTeam.nickname}${(c.statusNum == 3 && parseInt(c.vTeam.score) > parseInt(c.hTeam.score)) ? `__` : ``} ${c.vTeam.score} @ ${c.hTeam.score} ${(c.statusNum == 3 && parseInt(c.hTeam.score) > parseInt(c.vTeam.score)) ? `__` : ``}${hTeam.nickname}${(c.statusNum == 3 && parseInt(c.hTeam.score) > parseInt(c.vTeam.score)) ? `__` : ``} ${teamEmojis[c.hTeam.triCode]}${(c.statusNum == 1) ? `(${c.hTeam.win}-${c.hTeam.loss})` : ``}${(c.statusNum == 1) ? `` : ((c.statusNum == 2) ? `${(c.period.current > 4) ? ` | OT` : ` | Q`}${c.period.current} ${c.clock}` : ` | FINAL ${(c.period.current > 4) ? `${c.period.current - 4}OT` : ``}`)}`;
+        // let str1 = `${(c.statusNum == 1) ? `(${c.vTeam.win}-${c.vTeam.loss})` : ``} ${teamEmojis[c.vTeam.triCode]}${(c.statusNum == 3 && parseInt(c.vTeam.score) > parseInt(c.hTeam.score)) ? `__` : ``}${vTeam.nickname}${(c.statusNum == 3 && parseInt(c.vTeam.score) > parseInt(c.hTeam.score)) ? `__` : ``} ${c.vTeam.score} @ ${c.hTeam.score} ${(c.statusNum == 3 && parseInt(c.hTeam.score) > parseInt(c.vTeam.score)) ? `__` : ``}${hTeam.nickname}${(c.statusNum == 3 && parseInt(c.hTeam.score) > parseInt(c.vTeam.score)) ? `__` : ``} ${teamEmojis[c.hTeam.triCode]}${(c.statusNum == 1) ? `(${c.hTeam.win}-${c.hTeam.loss})` : ``}${(c.statusNum == 1) ? `` : ((c.statusNum == 2) ? `${(c.period.current > 4) ? ` | OT` : ` | Q`}${c.period.current} ${c.clock}` : ` | FINAL ${(c.period.current > 4) ? `${c.period.current - 4}OT` : ``}`)}`;
+        let str1 = `${(c.statusNum == 1) ? `(${c.vTeam.win}-${c.vTeam.loss})` : ``} ${teamEmojis[c.vTeam.triCode]} ${(c.statusNum == 3 && parseInt(c.vTeam.score) > parseInt(c.hTeam.score)) ? `__` : ``}${c.vTeam.triCode} ${c.vTeam.score}${(c.statusNum == 3 && parseInt(c.vTeam.score) > parseInt(c.hTeam.score)) ? `__` : ``} @ ${(c.statusNum == 3 && parseInt(c.hTeam.score) > parseInt(c.vTeam.score)) ? `__` : ``}${c.hTeam.score} ${c.hTeam.triCode}${(c.statusNum == 3 && parseInt(c.hTeam.score) > parseInt(c.vTeam.score)) ? `__` : ``} ${teamEmojis[c.hTeam.triCode]} ${(c.statusNum == 1) ? `(${c.hTeam.win}-${c.hTeam.loss})` : ``}${(c.statusNum == 1) ? `` : ((c.statusNum == 2) ? `${(c.period.current > 4) ? `| OT` : `| Q`}${c.period.current} ${c.clock}` : `| FINAL ${(c.period.current > 4) ? `${c.period.current - 4}OT` : ``}`)}`;
         let str2 = `${(c.nugget.text) ? ((c.nugget.text != `` || c.nugget.text != ` `) ? `Summary: ${c.nugget.text}` : ((c.statusNum == 1) ? `` : `...`)) : ((c.statusNum == 1) ? `` : `...`)}`;
 
         if (c.playoffs) str2 += `\n${c.playoffs.seriesSummaryText}`; // Playoffs series summary
@@ -173,8 +170,6 @@ async function Scores() {
 
         embed.addField(str1, str2);
     }
-
-    console.log(`Got past data insertion`);
 
     // Checking that today's finished games is in the database
     let scores_games_finished_today;
@@ -211,24 +206,123 @@ async function Scores() {
 
 // Every minute
 async function donatorScores() {
+    // ID - 0000
+    // ScoreChannels - server-channel-message-yyyymmdd,repeat
+
     let donators = query(`SELECT * FROM users WHERE ScoreChannels IS NOT NULL;`);
 
-    let channels = [];
+    let channels = [], userIDs = [];
     donatorLoop: for (var i = 0; i < donators.length; i++) {
         let user = donators[i];
 
-        if (user.Donator != `y`) continue donatorLoop;
+        if (user.Donator != `y` && user.Donator != `f`) continue donatorLoop;
         if (!user.ScoreChannels) continue donatorLoop;
         let userChannels = user.ScoreChannels.split(`,`);
         if (!userChannels[0]) continue donatorLoop;
         for (var j = 0; j < userChannels.length; j++) {
             channels.push(userChannels[j]);
+            userIDs.push(user.ID);
         }
     }
 
     if (channels.length == 0) return;
 
+    // Finding currentDate
+    delete require.cache[require.resolve(`./cache/today.json`)];
+    let currentDate = require(`./cache/today.json`).links.currentDate;
+    let dateObject = new Date(currentDate.substring(0, 4), parseInt(currentDate.substring(4, 6)) - 1, currentDate.substring(6, 8));
+
+    let embed = new Discord.MessageEmbed()
+        .setTitle(`${teamEmojis.NBA} NBA Scores for ${dateObject.toDateString()}`)
+        .setColor(teamColors.NBA);
+
+    // Getting/formating scores embed
+    let json = await getJSON(`http://data.nba.net/10s/prod/v1/${currentDate}/scoreboard.json`);
+
+    // Checking if the API reponse is valid
+    let numGames = 1;
+    if (!json) numGames = 0;
+    else if (!json?.games) numGames = 0;
+    else if (json?.games?.length == 0) numGames = 0;
+    if (!numGames) return;
+
+    // Cycle through each game and add details to a field
+    let gamesFinished = 0;
+    let embedsAdded = 0;
+    gameLoop: for (var i = 0; i < json.games.length; i++) {
+        let c = json.games[i];
+
+        if (c.statusNum == 3) gamesFinished++; 
+        
+        let str1 = `${(c.statusNum == 1) ? `(${c.vTeam.win}-${c.vTeam.loss})` : ``} ${teamEmojis[c.vTeam.triCode]} ${(c.statusNum == 3 && parseInt(c.vTeam.score) > parseInt(c.hTeam.score)) ? `__` : ``}${c.vTeam.triCode} ${c.vTeam.score}${(c.statusNum == 3 && parseInt(c.vTeam.score) > parseInt(c.hTeam.score)) ? `__` : ``} @ ${(c.statusNum == 3 && parseInt(c.hTeam.score) > parseInt(c.vTeam.score)) ? `__` : ``}${c.hTeam.score} ${c.hTeam.triCode}${(c.statusNum == 3 && parseInt(c.hTeam.score) > parseInt(c.vTeam.score)) ? `__` : ``} ${teamEmojis[c.hTeam.triCode]} ${(c.statusNum == 1) ? `(${c.hTeam.win}-${c.hTeam.loss})` : ``}${(c.statusNum == 1) ? `` : ((c.statusNum == 2) ? `${(c.period.current > 4) ? `| OT` : `| Q`}${c.period.current} ${c.clock}` : `| FINAL ${(c.period.current > 4) ? `${c.period.current - 4}OT` : ``}`)}`;
+        let str2 = ``;
+        if (c.playoffs) str2 += `*${c.playoffs.seriesSummaryText}*\n`;
+
+        // Add countdown if game yet to start
+        if (c.statusNum == 1) { 
+            let msUntilStart = (new Date(c.startTimeUTC).getTime() - new Date().getTime());
+            if (msUntilStart <= 0) {
+                str2 += `Starting at any moment`;
+            } else {
+                str2 += `Starting ${formatDuration(new Date(c.startTimeUTC).getTime())}`;
+            }
+        } else {
+            str2 += `${(c.nugget.text) ? ((c.nugget.text != `` || c.nugget.text != ` `) ? `Summary: ${c.nugget.text}` : ((c.statusNum == 1) ? `` : `...`)) : ((c.statusNum == 1) ? `` : `...`)}`;
+        }
+
+        // Game leaders if possible
+        if (str2.endsWith(`...`) && c.statusNum == 3) {
+            // Checking if there is a cached boxscore to pull data from
+            if (fs.existsSync(path.join(__dirname, `./cache/${currentDate}/${c.gameId}_boxscore.json`))) {
+                let cachedBoxscore = require(`../cache/${currentDate}/${c.gameId}_boxscore.json`);
+                let leaders = { points: {}, assists: {}, rebounds: {} };
+
+                for (var stat in leaders) {
+                    let v = parseInt(cachedBoxscore.stats.vTeam.leaders[stat].value), h = parseInt(cachedBoxscore.stats.hTeam.leaders[stat].value);
+                    if (v > h) {
+                        leaders[stat] = cachedBoxscore.stats.vTeam.leaders[stat];
+                    } else if (v < h) {
+                        leaders[stat] = cachedBoxscore.stats.hTeam.leaders[stat];
+                    } else {
+                        // Merging two player arrays
+                        leaders[stat] = cachedBoxscore.stats.vTeam.leaders[stat];
+                        leaders[stat].players = leaders[stat].players.concat(cachedBoxscore.stats.hTeam.leaders[stat].players);
+                    }
+                    let arr = [];
+                    playerLoop: for (var j = 0; j < leaders[stat].players.length; j++) {
+                        // if (!leaders[stat].players[j].firstName || !leaders[stat].players[j].lastName) continue;
+                        if (typeof leaders[stat].players[j] == `string`) {
+                            arr.push(`${leaders[stat].players[j].split(` `)[0][0]}. ${leaders[stat].players[j].split(leaders[stat].players[j].split(` `)[0]).join(``)}`);
+                        } else if (leaders[stat].players[j].firstName && leaders[stat].players[j].lastName) {
+                            arr.push(`${leaders[stat].players[j].firstName.substring(0, 1)}. ${leaders[stat].players[j].lastName}`);
+                        } else continue playerLoop;
+                    }
+                    leaders[stat].players = arr;
+                }
+                str2 = str2.substring(0, str2.length - 3);
+                str2 += `**Leaders:** \`${leaders.points.value}\` pts (${leaders.points.players.join(`, `)}), \`${leaders.assists.value}\` ast (${leaders.assists.players.join(`, `)}), \`${leaders.rebounds.value}\` reb (${leaders.rebounds.players.join(`, `)})`;
+            }
+        }
+        
+        embed.addField(str1, str2);
+        embedsAdded++;
+    }
     
+    // Sending/updating messages
+    channelLoop: for (var i = 0; i < channels.length; i++) {
+        let details = channels[i].split(`-`); // server-channel-msg-yyymmdd
+        if (details[3] == currentDate) { // Last message is same day, so no change = update
+            let channel = await client.channels.fetch(details[1]);
+            let message = await channel.messages.fetch(details[2]);
+            await message.edit({ embeds: [embed] });
+        } else { // New date, so new message
+            let channel = await client.channels.fetch(details[1]);
+            let message = await channel.send({ embeds: [embed] });
+            details[3] = message.id;
+            details[4] = currentDate;
+            await query(con, `UPDATE users SET ScoreChannels = "${details.join(`-`)}" WHERE ID = "${userIDs[i]}";`);
+        }
+    } 
 }
 
 // Every hour

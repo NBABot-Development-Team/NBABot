@@ -18,7 +18,7 @@ module.exports = {
         .addStringOption(option => option.setName(`date`).setDescription(`Today/tomorrow/yesterday or a date in mm/dd/yyyy format.`)),
     
 	async execute(variables) {
-		let { interaction, con } = variables;
+		let { interaction, con, ad } = variables;
 
         let team = interaction.options.getString(`team`), 
             date = interaction.options.getString(`date`);
@@ -81,6 +81,8 @@ module.exports = {
                         .setTitle(`Bet successfully retracted.`)
                         .setColor(0x5CB85C)
                         .setDescription(`Your balance is now $${user.Balance.toFixed(2)}.`);
+
+                    if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });
 
                     return await interaction.reply({ embeds: [embed] });
                 }

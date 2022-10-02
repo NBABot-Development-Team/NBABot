@@ -10,18 +10,22 @@ const fetch = require(`node-fetch`);
 const mysql = require(`mysql`);
 const express = require(`express`);
 const http = require(`http`);
+const path = require(`path`);
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v9');
 
 // Assets
 const teamColors = require(`./assets/teams/colors.json`);
+const teamEmojis = require(`./assets/teams/emojis.json`);
 
 // Methods
 const logger = require(`./methods/logger.js`);
 const getUser = require(`./methods/database/get-user.js`);
+const getJSON = require(`./methods/get-json.js`);
 const createUser = require(`./methods/database/create-user.js`);
 const query = require(`./methods/database/query.js`);
-
+const formatDuration = require(`./methods/format-duration.js`);
+const randInt = require(`./methods/randint.js`);
 
 // Core Discord variables
 const client = new Discord.Client({ intents: [Discord.Intents.FLAGS.GUILDS, Discord.Intents.FLAGS.GUILD_MESSAGES] });
@@ -50,10 +54,14 @@ commandLoop: for (const file of commandFiles) {
 }
 
 client.on(`ready`, async () => {
-	module.exports = { con, client, runDatabase };
+	module.exports = { con, client, runDatabase, shardID, sortOutShards };
 	clientReady = true;
 	logger.ready(`Ready!`);
 	updateActivity();
+	await sortOutShards();
+
+	DonatorScores();
+	setInterval(DonatorScores, 1000 * 60);
 });
 
 function updateCommands(ID) {
@@ -156,6 +164,7 @@ client.on(`messageCreate`, async message => {
 
 	if (!args) return;
 	if (!args[0]) return;
+	if (!args[1]) return;
 
 	if (args[1].toLowerCase() == `update`) {
 		let msg = await message.channel.send(`Updating...`);
@@ -277,6 +286,40 @@ client.on(`messageCreate`, async message => {
 			activeBetCount = activeBetCount[0][`COUNT(*)`];
 			return await message.channel.send(`${args[2]}: \`${activeBetCount}\``);
 			break;
+
+		case `shard`:
+			return await message.channel.send(`Shard: ${shardID}`);
+			break;
+
+		case `update-user`:
+			// @NBABot update-user ID Name Value
+			if (args.length != 5) return;
+			switch(args[3].toLowerCase()) {
+				case `balance`: // number
+				case `borrect`:
+				case `wrong`:
+					await query(con, `UPDATE users SET ${args[3]} = ${args[4]} WHERE ID = "${args[2]}";`);
+					return await message.channel.send(`UPDATED users SET \`${args[3]}]\` = \`${args[4]}\` WHERE ID = "\`${args[2]}\`";`);
+					break;
+
+				case `favouriteteam`: // string
+				case `description`:
+				case `donator`:
+				case `hints`:
+				case `guilds`:
+				case `odds`:
+				case `dateformat`:
+				case `scorechannels`:
+				case `lastweekly`:
+					await query(con, `UPDATE users SET ${args[3]} = "${args[4]}" WHERE ID = "${args[2]}";`);
+					return await message.channel.send(`UPDATED users SET \`${args[3]}]\` = "\`${args[4]}\`" WHERE ID = "\`${args[2]}\`";`);
+					break;
+
+				default:
+					return;
+					break;
+			}
+			break;
 		
 	}
 });
@@ -324,10 +367,29 @@ client.on(`interactionCreate`, async interaction => {
 		}
 	}
 
+	let ad = null;
 	// Run command
 	if (runDatabase) {
+		let user = await query(con, `SELECT * FROM users WHERE ID = "${interaction.user.id}";`);
+		user = user[0];
+
+		// Checking if the server is exempt at all
+		let users = await query(con, `SELECT * FROM users WHERE Donator <> "n";`);
+		let removeAds = false;
+		userLoop: for (var i = 0; i < users.length; i++) {
+			if (users[i].AdFreeServer == interaction.guild.id) {
+				removeAds = true;
+				break userLoop;
+			}
+		}
+
+		if ((user.Ads == "y" || user.Donator == "n") && !removeAds) { // Show ads
+			delete require.cache[require.resolve(`./config.json`)];
+			let ads = require(`./config.json`).ads;
+			ad = ads[randInt(0, ads.length - 1)];
+		}
 		try {
-			await command.execute({ interaction, client, con });
+			await command.execute({ interaction, client, con, ad });
 		} catch (error) {
 			console.log(error);
 			logger.error(error);
@@ -368,6 +430,7 @@ process.on(`exit`, () => {
 
 // Updating cache
 const methods = require(`./methods/update-cache.js`);
+const { donatorScores } = require('./methods/update-cache.js');
 
 // Cache and updating stuff
 methods.updateDate();
@@ -385,5 +448,180 @@ function updateActivity() {
 	client.user.setActivity(activityText);
 }
 setInterval(updateActivity, 1000 * 60 * 30);
+
+// Every minute
+async function DonatorScores() {
+    // ID - 0000
+    // ScoreChannels - server-channel-message-yyyymmdd,repeat
+
+	await sortOutShards();
+
+    let donators = await query(con, `SELECT * FROM users WHERE Donator = "f";`);
+
+    let channels = [], userIDs = [];
+    donatorLoop: for (var i = 0; i < donators.length; i++) {
+        let user = donators[i];
+
+        if (user.Donator != `y` && user.Donator != `f`) continue donatorLoop;
+        if (!user.ScoreChannels) continue donatorLoop;
+		if (user.ScoreChannels == "NULL") continue donatorLoop;
+        let userChannels = user.ScoreChannels.split(`,`);
+        if (!userChannels[0]) continue donatorLoop;
+        for (var j = 0; j < userChannels.length; j++) {
+            channels.push(userChannels[j]);
+            userIDs.push(user.ID);
+        }
+    }
+
+    if (channels.length == 0) return;
+
+	// Checking if we're in the right shard
+	let validChannels = 0;
+	for (var i = 0; i < channels.length; i++) {
+		let details = channels[i].split(`-`);
+		if (details[4].toString() == shardID.toString()) validChannels++; 
+	}
+	if (validChannels == 0) return;
+
+    // Finding currentDate
+    delete require.cache[require.resolve(`./cache/today.json`)];
+    let currentDate = require(`./cache/today.json`).links.currentDate;
+    let dateObject = new Date(currentDate.substring(0, 4), parseInt(currentDate.substring(4, 6)) - 1, currentDate.substring(6, 8));
+
+    let embed = new Discord.MessageEmbed()
+        .setTitle(`${teamEmojis.NBA} NBA Scores for ${dateObject.toDateString()}`)
+        .setColor(teamColors.NBA)
+		.setTimestamp()
+		.setFooter({ text: `Last updated: `});
+
+    // Getting/formating scores embed
+    let json = await getJSON(`http://data.nba.net/10s/prod/v1/${currentDate}/scoreboard.json`);
+
+    // Checking if the API reponse is valid
+    let numGames = 1;
+    if (!json) numGames = 0;
+    else if (!json?.games) numGames = 0;
+    else if (json?.games?.length == 0) numGames = 0;
+    if (!numGames) return;
+
+    // Cycle through each game and add details to a field
+    let gamesFinished = 0;
+    let embedsAdded = 0;
+    gameLoop: for (var i = 0; i < json.games.length; i++) {
+        let c = json.games[i];
+
+        if (c.statusNum == 3) gamesFinished++; 
+        
+        let str1 = `${(c.statusNum == 1) ? `(${c.vTeam.win}-${c.vTeam.loss})` : ``} ${teamEmojis[c.vTeam.triCode]} ${(c.statusNum == 3 && parseInt(c.vTeam.score) > parseInt(c.hTeam.score)) ? `__` : ``}${c.vTeam.triCode} ${c.vTeam.score}${(c.statusNum == 3 && parseInt(c.vTeam.score) > parseInt(c.hTeam.score)) ? `__` : ``} @ ${(c.statusNum == 3 && parseInt(c.hTeam.score) > parseInt(c.vTeam.score)) ? `__` : ``}${c.hTeam.score} ${c.hTeam.triCode}${(c.statusNum == 3 && parseInt(c.hTeam.score) > parseInt(c.vTeam.score)) ? `__` : ``} ${teamEmojis[c.hTeam.triCode]} ${(c.statusNum == 1) ? `(${c.hTeam.win}-${c.hTeam.loss})` : ``}${(c.statusNum == 1) ? `` : ((c.statusNum == 2) ? `${(c.period.current > 4) ? `| OT` : `| Q`}${c.period.current} ${c.clock}` : `| FINAL ${(c.period.current > 4) ? `${c.period.current - 4}OT` : ``}`)}`;
+        let str2 = ``;
+        if (c.playoffs) str2 += `*${c.playoffs.seriesSummaryText}*\n`;
+
+        // Add countdown if game yet to start
+        if (c.statusNum == 1) { 
+            let msUntilStart = (new Date(c.startTimeUTC).getTime() - new Date().getTime());
+            if (msUntilStart <= 0) {
+                str2 += `Starting at any moment`;
+            } else {
+                str2 += `Starting ${formatDuration(new Date(c.startTimeUTC).getTime())}`;
+            }
+        } else {
+            str2 += `${(c.nugget.text) ? ((c.nugget.text != `` || c.nugget.text != ` `) ? `Summary: ${c.nugget.text}` : ((c.statusNum == 1) ? `` : `...`)) : ((c.statusNum == 1) ? `` : `...`)}`;
+        }
+
+        // Game leaders if possible
+        if (str2.endsWith(`...`) && c.statusNum == 3) {
+            // Checking if there is a cached boxscore to pull data from
+            if (fs.existsSync(path.join(__dirname, `./cache/${currentDate}/${c.gameId}_boxscore.json`))) {
+                let cachedBoxscore = require(`./cache/${currentDate}/${c.gameId}_boxscore.json`);
+                let leaders = { points: {}, assists: {}, rebounds: {} };
+
+                for (var stat in leaders) {
+                    let v = parseInt(cachedBoxscore.stats.vTeam.leaders[stat].value), h = parseInt(cachedBoxscore.stats.hTeam.leaders[stat].value);
+                    if (v > h) {
+                        leaders[stat] = cachedBoxscore.stats.vTeam.leaders[stat];
+                    } else if (v < h) {
+                        leaders[stat] = cachedBoxscore.stats.hTeam.leaders[stat];
+                    } else {
+                        // Merging two player arrays
+                        leaders[stat] = cachedBoxscore.stats.vTeam.leaders[stat];
+                        leaders[stat].players = leaders[stat].players.concat(cachedBoxscore.stats.hTeam.leaders[stat].players);
+                    }
+                    let arr = [];
+                    playerLoop: for (var j = 0; j < leaders[stat].players.length; j++) {
+                        // if (!leaders[stat].players[j].firstName || !leaders[stat].players[j].lastName) continue;
+                        if (typeof leaders[stat].players[j] == `string`) {
+                            arr.push(`${leaders[stat].players[j].split(` `)[0][0]}. ${leaders[stat].players[j].split(leaders[stat].players[j].split(` `)[0]).join(``)}`);
+                        } else if (leaders[stat].players[j].firstName && leaders[stat].players[j].lastName) {
+                            arr.push(`${leaders[stat].players[j].firstName.substring(0, 1)}. ${leaders[stat].players[j].lastName}`);
+                        } else continue playerLoop;
+                    }
+                    leaders[stat].players = arr;
+                }
+                str2 = str2.substring(0, str2.length - 3);
+                str2 += `**Leaders:** \`${leaders.points.value}\` pts (${leaders.points.players.join(`, `)}), \`${leaders.assists.value}\` ast (${leaders.assists.players.join(`, `)}), \`${leaders.rebounds.value}\` reb (${leaders.rebounds.players.join(`, `)})`;
+            }
+        }
+        
+        embed.addField(str1, str2);
+        embedsAdded++;
+    }
+    
+    // Sending/updating messages
+    channelLoop: for (var i = 0; i < channels.length; i++) {
+        let details = channels[i].split(`-`); // server-channel-msg-yyymmdd
+		if (details[4].toString() != shardID.toString()) continue channelLoop;
+        if (details[3] == currentDate) { // Last message is same day, so no change = update
+            let channel = await client.channels.fetch(details[1]);
+            let message = await channel.messages.fetch(details[2]);
+            await message.edit({ embeds: [embed] });
+        } else { // New date, so new message
+			let channel, message;
+			channel = await client.channels.fetch(details[1]);
+			message = await channel.send({ embeds: [embed] });
+            details[2] = message.id;
+            details[3] = currentDate;
+            await query(con, `UPDATE users SET ScoreChannels = "${details.join(`-`)}" WHERE ID = "${userIDs[i]}";`);
+        }
+    } 
+}
+
+async function sortOutShards() {
+	let users = await query(con, `SELECT * FROM users WHERE Donator = "f";`);
+	for (var i = 0; i < users.length; i++) {
+		let user = users[i];
+		if (!user.ScoreChannels) continue;
+		if (user.ScoreChannels == "NULL") continue;
+		// guild-channel-msg-date-shard
+		let details = user.ScoreChannels.split(`-`);
+		if (details.length != 5) continue;
+
+		let channel;
+		try {
+			channel = await client.channels.fetch(details[1]);
+		} catch (e) {
+			// ...
+		}
+		if (!channel) continue;
+
+		// Cool, so we know this shard has that channel in it
+		details[4] = shardID.toString();
+		await query(con, `UPDATE users SET ScoreChannels = "${details.join(`-`)}" WHERE ID = "${user.ID}"`);
+	}
+}
+
+let shardID;
+process.on(`message`, message => {
+	if (!message.type) return false;
+
+	if (message.type == `shardId`) {
+		shardID = message.data.shardId;
+	}
+
+	// Direct donator scores
+	if (message.data.shardId == 0) {
+		// DonatorScores();
+		// setInterval(DonatorScores, 1000 * 60);
+	}
+});
 
 // server.listen(port, () => console.log(`Listening on port ${port}`));

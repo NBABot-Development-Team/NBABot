@@ -16,7 +16,7 @@ module.exports = {
         .addUserOption(option => option.setName(`user`).setDescription(`Only use this if you want to see someone else's bets.`).setRequired(false)),
     
 	async execute(variables) {
-		let { interaction, con } = variables;
+		let { interaction, con, ad } = variables;
 
         let user = interaction.options.getUser(`user`);
 
@@ -57,6 +57,8 @@ module.exports = {
         }
 
         if (fields == 0) return await interaction.reply({ content: `You have no bets placed.` });
+
+        if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });
 
         return await interaction.reply({ embeds: [embed] });
 	},

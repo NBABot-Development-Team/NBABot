@@ -19,7 +19,7 @@ module.exports = {
         .addStringOption(option => option.setName(`team`).setDescription(`An NBA team, e.g. PHX or Lakers.`).setRequired(true)),
     
 	async execute(variables) {
-		let { interaction } = variables;
+		let { interaction, ad } = variables;
         
         await interaction.deferReply();
         
@@ -71,6 +71,7 @@ module.exports = {
         } else str2 = `None`;
 
         embed.addField(str1, str2, false);
+        if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });
 
         return await interaction.editReply({ embeds: [embed] });
 	},

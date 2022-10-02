@@ -35,7 +35,7 @@ module.exports = {
         .addStringOption(option => option.setName(`mode`).setDescription(`Regular/career/playoffs`)),
     
 	async execute(variables) {
-		let { interaction } = variables;
+		let { interaction, ad } = variables;
 
         await interaction.deferReply();
 
@@ -389,6 +389,8 @@ module.exports = {
             let embed = new Discord.MessageEmbed()
                 .setColor(color)
                 .setImage(`attachment://${fileName}`);
+
+            if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });
             
             return interaction.editReply({ embeds: [embed], files: [img] });
         });

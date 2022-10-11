@@ -7,6 +7,7 @@ const fs = require(`fs`);
 const formatDate = require(`../methods/format-date.js`);
 const getJSON = require(`../methods/get-json.js`);
 const query = require(`../methods/database/query.js`);
+const formatDuration = require(`../methods/format-duration.js`);
 
 // JSON files
 const teamEmojis = require(`../assets/teams/emojis.json`);
@@ -59,6 +60,7 @@ module.exports = {
         let embed = new Discord.MessageEmbed()
             .setTitle(`Odds for ${dateObject.toDateString()}`)
             .setColor(0xff4242)
+            .setFooter({ text: `Turn betting functionality off with /settings betting off .`})
             .setDescription(`To place a bet, use \`/bet\`.\nMake sure to claim the bet after the game has finished with \`/claim\`.`);
 
         // Getting odds type
@@ -70,22 +72,22 @@ module.exports = {
             
             gameLoop: for (var i = 0; i < json.games.length; i++) {
                 let c = json.games[i];
-                if (teams.includes(c.vTeam.triCode) && teams.includes(c.hTeam.triCode)) {
+                if (teams.includes(c.awayTeam.teamTricode) && teams.includes(c.homeTeam.teamTricode)) {
                     // Found the game
-                    if (c.statusNum > 1) {
-                        embed.addField(`${teamEmojis[c.vTeam.triCode]} ${c.vTeam.triCode} @ ${c.hTeam.triCode} ${teamEmojis[c.hTeam.triCode]} | ${c.startTimeEastern}`, `Game has already started.`);
+                    if (c.gameStatus > 1) {
+                        embed.addField(`${teamEmojis[c.awayTeam.teamTricode]} ${c.awayTeam.teamTricode} @ ${c.homeTeam.teamTricode} ${teamEmojis[c.homeTeam.teamTricode]} | Starting ${(c.gameDateTimeUTC) ? formatDuration(new Date(c.gameDateTimeUTC).getTime()) : formatDuration(new Date(c.gameTimeUTC).getTime())}`, `Game has already started.`);
                         continue oddsLoop;
                     }
 
                     let o = odds[name];
 
                     if (!o.homeTeamOdds || !o.awayTeamOdds) {
-                        embed.addField(`${teamEmojis[c.vTeam.triCode]} ${c.vTeam.triCode} @ ${c.hTeam.triCode} ${teamEmojis[c.hTeam.triCode]} | ${c.startTimeEastern}`, `Odds are not available.`);
+                        embed.addField(`${teamEmojis[c.awayTeam.teamTricode]} ${c.awayTeam.teamTricode} @ ${c.homeTeam.teamTricode} ${teamEmojis[c.homeTeam.teamTricode]} | Starting ${(c.gameDateTimeUTC) ? formatDuration(new Date(c.gameDateTimeUTC).getTime()) : formatDuration(new Date(c.gameTimeUTC).getTime())}`, `Odds are not available.`);
                         continue oddsLoop;
                     }
 
                     if (!o.homeTeamOdds.moneyLine || !o.awayTeamOdds.moneyLine) {
-                        embed.addField(`${teamEmojis[c.vTeam.triCode]} ${c.vTeam.triCode} @ ${c.hTeam.triCode} ${teamEmojis[c.hTeam.triCode]} | ${c.startTimeEastern}`, `Odds are not available.`);
+                        embed.addField(`${teamEmojis[c.awayTeam.teamTricode]} ${c.awayTeam.teamTricode} @ ${c.homeTeam.teamTricode} ${teamEmojis[c.homeTeam.teamTricode]} | Starting ${(c.gameDateTimeUTC) ? formatDuration(new Date(c.gameDateTimeUTC).getTime()) : formatDuration(new Date(c.gameTimeUTC).getTime())}`, `Odds are not available.`);
                         continue oddsLoop;
                     }
 
@@ -93,14 +95,14 @@ module.exports = {
                     let hTeamPayout = (((o.homeTeamOdds.moneyLine > 0) ? parseInt(100 + o.homeTeamOdds.moneyLine) : parseInt(100 + (10000/-o.homeTeamOdds.moneyLine))) / 100).toPrecision(3);
 
                     if (!vTeamPayout || !hTeamPayout) {
-                        embed.addField(`${teamEmojis[c.vTeam.triCode]} ${c.vTeam.triCode} @ ${c.hTeam.triCode} ${teamEmojis[c.hTeam.triCode]} | ${c.startTimeEastern}`, `Odds are not available.`);
+                        embed.addField(`${teamEmojis[c.awayTeam.teamTricode]} ${c.awayTeam.teamTricode} @ ${c.homeTeam.teamTricode} ${teamEmojis[c.homeTeam.teamTricode]} | Starting ${(c.gameDateTimeUTC) ? formatDuration(new Date(c.gameDateTimeUTC).getTime()) : formatDuration(new Date(c.gameTimeUTC).getTime())}`, `Odds are not available.`);
                         continue oddsLoop;
                     }
 
                     if (oddsType == `d`) {
-                        embed.addField(`${teamEmojis[c.vTeam.triCode]} ${c.vTeam.triCode} @ ${c.hTeam.triCode} ${teamEmojis[c.hTeam.triCode]} | ${c.startTimeEastern}`, `**${c.vTeam.triCode}**: \`$1 -> $${vTeamPayout}\`\n**${c.hTeam.triCode}**: \`$1 -> $${hTeamPayout}\``);
+                        embed.addField(`${teamEmojis[c.awayTeam.teamTricode]} ${c.awayTeam.teamTricode} @ ${c.homeTeam.teamTricode} ${teamEmojis[c.homeTeam.teamTricode]} | Starting ${(c.gameDateTimeUTC) ? formatDuration(new Date(c.gameDateTimeUTC).getTime()) : formatDuration(new Date(c.gameTimeUTC).getTime())}`, `**${c.awayTeam.teamTricode}**: \`$1 -> $${vTeamPayout}\`\n**${c.homeTeam.teamTricode}**: \`$1 -> $${hTeamPayout}\``);
                     } else {
-                        embed.addField(`${teamEmojis[c.vTeam.triCode]} ${c.vTeam.triCode} @ ${c.hTeam.triCode} ${teamEmojis[c.hTeam.triCode]} | ${c.startTimeEastern}`, `**${c.vTeam.triCode}**: \`${(o.awayTeamOdds.moneyLine > 0) ? `+${o.awayTeamOdds.moneyLine}` : o.awayTeamOdds.moneyLine}\`\n**${c.hTeam.triCode}**: \`${(o.homeTeamOdds.moneyLine > 0) ? `+${o.homeTeamOdds.moneyLine}` : o.homeTeamOdds.moneyLine}\``);
+                        embed.addField(`${teamEmojis[c.awayTeam.teamTricode]} ${c.awayTeam.teamTricode} @ ${c.homeTeam.teamTricode} ${teamEmojis[c.homeTeam.teamTricode]} | Starting ${(c.gameDateTimeUTC) ? formatDuration(new Date(c.gameDateTimeUTC).getTime()) : formatDuration(new Date(c.gameTimeUTC).getTime())}`, `**${c.awayTeam.teamTricode}**: \`${(o.awayTeamOdds.moneyLine > 0) ? `+${o.awayTeamOdds.moneyLine}` : o.awayTeamOdds.moneyLine}\`\n**${c.homeTeam.teamTricode}**: \`${(o.homeTeamOdds.moneyLine > 0) ? `+${o.homeTeamOdds.moneyLine}` : o.homeTeamOdds.moneyLine}\``);
                     }
                     continue oddsLoop;
                 }

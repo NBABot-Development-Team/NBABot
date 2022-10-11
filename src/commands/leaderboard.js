@@ -36,6 +36,7 @@ module.exports = {
 
 		let i = 0, authorObject, authorPosition;
 		userLoop: for (var user of users) {
+			console.log(i);
 			// userArray.push(user);
 			// Finding message author position
 			let username = await client.users.fetch(user.ID);

@@ -103,7 +103,7 @@ module.exports = {
                     .addField(`Weight`, `${player.weightPounds}lbs/${player.weightKilograms}kg`, true)
                     .addField(`Date of Birth`, new Date(player.dateOfBirthUTC).toDateString(), true)
                     .addField(`Drafted`, draftStr, true)
-                    .addField(`NBA Debut Year`, player.nbaDebutYear, true)
+                    .addField(`NBA Debut Year`, (player.nbaDebutYear) ? player.nbaDebutYear : `Unknown`, true)
                     .addField(`Country`, player.country, true)
                     .setColor(teamColors[teamNames[player.teamId]]);
 

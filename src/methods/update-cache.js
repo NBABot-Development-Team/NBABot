@@ -38,12 +38,20 @@ module.exports = {
 			.then(today => {
 				let currentDate = today.links.currentDate;
 
-				fetch(`http://data.nba.net/10s/prod/v1/${currentDate}/scoreboard.json`)
+				fetch(`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json`)
 					.then(res => res.json())
 					.then(json => {
+						let dates = json.leagueSchedule.gameDates;
+						for (var i = 0; i < dates.length; i++) {
+							let d = new Date(dates[i].gameDate).toISOString().substring(0, 10).split(`-`).join(``);
+							if (d == currentDate) {
+								json = dates[i];
+							}
+						}
+
 						let gamesFinished = 0;
 						for (var i = 0; i < json.games.length; i++) {
-							if (json.games[i].statusNum == 3) gamesFinished++;
+							if (json.games[i].gameStatus == 3) gamesFinished++;
 						}
 
 						let UTCDateObject = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate(), new Date().getUTCHours(), new Date().getUTCMinutes(), new Date().getUTCSeconds());
@@ -54,7 +62,7 @@ module.exports = {
 						// today.seasonScheduleYear = 2021;
 
 						if (currentDate != trueDate) {
-							if (json.numGames == gamesFinished) today.links.currentDate = trueDate;
+							if (json.games.length == gamesFinished) today.links.currentDate = trueDate;
 						} else today.links.currentDate = trueDate;
 
 						fs.writeFile(`./cache/today.json`, JSON.stringify(today), err => {
@@ -141,22 +149,89 @@ module.exports = {
 		delete require.cache[require.resolve(`../cache/today.json`)];
 		let currentDate = require(`../cache/today.json`).links.currentDate;
 
-		let json = await getJSON(`http://data.nba.net/10s/prod/v1/${currentDate}/scoreboard.json`);
-
-		// Checking for manual score insertions
-		for (var i = 0; i < json.games.length; i++) {
-			if (currentDate == `20220930` && json.games[i].gameId == `0012200001`) {
-				json.games[i].vTeam.score = `96`;
-				json.games[i].hTeam.score = `87`;
+		let json = await getJSON(`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json`);
+		let dates = json.leagueSchedule.gameDates;
+		for (var i = 0; i < dates.length; i++) {
+			let d = new Date(dates[i].gameDate).toISOString().substring(0, 10).split(`-`).join(``);
+			if (d == currentDate) {
+				json = dates[i];
 			}
 		}
+		let json2 = await getJSON(`https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json`);
+		json2 = json2.scoreboard;
+		let gamesMatching = 0;
+		jsonLoop: for (var i = 0; i < json.games.length; i++) {
+			for (var j = 0; j < json2.games.length; j++) {
+				if (json.games[i].gameId == json2.games[j].gameId) {
+					gamesMatching++;
+					continue jsonLoop;
+				}
+			}
+		}
+		if (gamesMatching == json.games.length && gamesMatching == json2.games.length) {
+			json = json2;
+		}
+		/*
+		let json = await getJSON(`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json`);
+		let dates = json.leagueSchedule.gameDates;
+		for (var i = 0; i < dates.length; i++) {
+			let d = new Date(dates[i].gameDate);
+			d = d.toISOString().substring(0, 10).split(`-`).join(``);
+			if (d == currentDate) {
+				json = dates[i];
+				for (var j = 0; j < json.games.length; j++) {
+					if (json.games[j].gameStatus == 3 && (json.games[j].awayTeam.score == 0 || json.games[j].homeTeam.score == 0)) {
+						json = await getJSON(`https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json`);
+						json = json.scoreboard;
+					}
+				}
+			}
+		} 
+		*/
+
+		// let json2 = await getJSON(`http://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=${currentDate}`);
+
+		/* ESPN workaround
+		let solutions = { "UTAH": "UTA", "GS": "GSW", "NY": "NYK", "SA": "SAS", "NO": "NOP" };
+		for (var i = 0; i < json.games.length; i++) {
+			// Cycling through each game and seeing if ESPN has scores instead
+			if (!json.games[i].vTeam.score && !json.games[i].hTeam.score) {
+				eventLoop: for (var j = 0; j < json2.events.length; j++) {
+					let game = json2.events[j].competitions[0];
+					let vTeam, hTeam;
+					// Fixing irregularities
+					for (var k = 0; k < game.competitors.length; k++) {
+						if (solutions[game.competitors[k].team.abbreviation]) {
+							game.competitors[k].team.abbreviation = solutions[game.competitors[k].team.abbreviation];
+						}
+
+						if (game.competitors[k].homeAway == `home`) {
+							hTeam = game.competitors[k];
+						} else if (game.competitors[k].homeAway == `away`) {
+							vTeam = game.competitors[k];
+						}
+					}
+
+					if (!vTeam || !hTeam) continue eventLoop; 
+
+					if (vTeam.team.abbreviation == json.games[i].vTeam.triCode &&
+						hTeam.team.abbreviation == json.games[i].hTeam.triCode) {
+						json.games[i].vTeam.score = vTeam.score;
+						json.games[i].hTeam.score = hTeam.score;
+						json.games[i].period.current = game.status.period;
+						json.games[i].clock = game.status.displayClock;
+						if (game.status.type.name == `STATUS_FINAL`) json.games[i].statusNum = 3;
+					}
+				}
+			} 
+		} */
 
 		// Writing to cache
 		if (!fs.existsSync(`./cache/${currentDate}/`)) fs.mkdir(`./cache/${currentDate}/`, err => { if (err) throw err; });
 		fs.writeFile(`./cache/${currentDate}/scoreboard.json`, JSON.stringify(json), async err => {
 			if (err) throw err;
 			// log?
-			
+
 			delete require.cache[require.resolve(`../cache/${currentDate}/scoreboard.json`)];
 			let before = require(`../cache/${currentDate}/scoreboard.json`);
 
@@ -166,8 +241,8 @@ module.exports = {
 
 			if (allowedToCycle) {
 				for (var i = 0; i < json.games.length; i++) {
-					if (before.games[i].statusNum == 2 && json.games[i].statusNum == 3) {
-						console.log(`Claiming bets from ${json.games[i].vTeam.triCode} @ ${json.games[i].hTeam.triCode} on ${currentDate}`);
+					if (before.games[i].gameStatus == 2 && json.games[i].gameStatus == 3) {
+						console.log(`Claiming bets from ${json.games[i].awayTeam.teamTriCode} @ ${json.games[i].homeTeam.teamTriCode} on ${currentDate}`);
 						let claimBets = require(`./claim-bets.js`);
 						await claimBets(currentDate);
 					}

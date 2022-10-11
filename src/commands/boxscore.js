@@ -53,7 +53,15 @@ module.exports = {
 		}
 
 		// Checking if cache can be used
-		let json = await getJSON(`http://data.nba.net/10s/prod/v1/${requestedDate}/scoreboard.json`);
+		let json = await getJSON(`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json`);
+		let dates = json.leagueSchedule.gameDates;
+		for (var i = 0; i < dates.length; i++) {
+			let d = new Date(dates[i].gameDate);
+			d = d.toISOString().substring(0, 10).split(`-`).join(``);
+			if (d == requestedDate) {
+				json = dates[i];
+			}
+		}
 		/*if (fs.existsSync(`./cache/${requestedDate}/`)) {
 			if (fs.existsSync(`./cache/${requestedDate}/scoreboard.json`)) {
 				json = require(`../cache/${requestedDate}/scoreboard.json`);
@@ -66,15 +74,15 @@ module.exports = {
 		else if (!json.games) gameID = null;
 		else {
 			for (var i = 0; i < json.games.length; i++) {
-				if (json.games[i].vTeam.triCode == requestedTeam) {
+				if (json.games[i].awayTeam.teamTricode == requestedTeam) {
 					gameID = json.games[i].gameId;
-					teamLocationOriginal = `vTeam`;
-					otherTeamLocationOriginal = `hTeam`;
+					teamLocationOriginal = `awayTeam`;
+					otherTeamLocationOriginal = `homeTeam`;
 					gameDetails = json.games[i];
-				} else if (json.games[i].hTeam.triCode == requestedTeam) {
+				} else if (json.games[i].homeTeam.teamTricode == requestedTeam) {
 					gameID = json.games[i].gameId;
-					teamLocationOriginal = `hTeam`;
-					otherTeamLocationOriginal = `vTeam`;
+					teamLocationOriginal = `homeTeam`;
+					otherTeamLocationOriginal = `awayTeam`;
 					gameDetails = json.games[i];
 				}
 			}
@@ -86,15 +94,16 @@ module.exports = {
 		}
 		
 		// Getting date object
-		let dateObject = new Date(gameDetails.startDateEastern.substring(0, 4), parseInt(gameDetails.startDateEastern.substring(4, 6)) - 1, gameDetails.startDateEastern.substring(6, 8));
+		let dateObject = new Date(gameDetails.gameEt);
 
 		// Checking if game is yet to start
-		if (gameDetails.statusNum == 1) {
-			return await interactionSource.reply({ content: `${gameDetails[teamLocationOriginal].triCode} ${(teamLocationOriginal == `hTeam`) ? `v` : `@`} ${gameDetails[otherTeamLocationOriginal].triCode} on ${dateObject.toDateString()} has not started yet.` });
+		if (gameDetails.gameStatus == 1) {
+			return await interactionSource.reply({ content: `${gameDetails[teamLocationOriginal].teamTricode} ${(teamLocationOriginal == `homeTeam`) ? `v` : `@`} ${gameDetails[otherTeamLocationOriginal].teamTricode} on ${dateObject.toDateString()} has not started yet.` });
 		}
 
-		// Seeing if a completed boxscore is already cached
-		let cachedBoxscore;
+		let cachedBoxscore; 
+		// Pausing for a lil bit
+		/* Seeing if a completed boxscore is already cached
 		if (gameDetails.statusNum == 3) {
 			if (fs.existsSync(path.join(__dirname, `../cache/${requestedDate}/`))) {
 				if (fs.existsSync(path.join(__dirname, `../cache/${requestedDate}/${gameDetails.teamId}_boxscore.json`))) {
@@ -103,19 +112,20 @@ module.exports = {
 			} else {
 				fs.mkdir(path.join(path.join(__dirname, `../cache/${requestedDate}/`)), err => { if (err) { console.log(`error 1`); throw err; }});
 			}
-		}
+		} */
+		
 
 		// Getting the boxscore JSON data
 		let b;
 		if (cachedBoxscore) {
 			b = cachedBoxscore;
-		} else b = await getJSON(`http://data.nba.net/10s/prod/v1/${requestedDate}/${gameID}_boxscore.json`);
+		} else b = await getJSON(`https://cdn.nba.com/static/json/liveData/boxscore/boxscore_${gameID}.json`);
 		if (!b) {
 			return await interactionSource.reply({ content: `An error occurred fetching the boxscore.`});
 		}
 
 		// Writing boxscore to cache
-		if (!cachedBoxscore && gameDetails.statusNum == 3) {
+		if (!cachedBoxscore && gameDetails.gameStatus == 3) {
 			fs.writeFileSync(path.join(__dirname, `../cache/${requestedDate}/${gameDetails.gameId}_boxscore.json`), JSON.stringify(b), err => {
 				if (err) { console.log(`error 2`); throw err; }
 			});
@@ -126,36 +136,40 @@ module.exports = {
 
 		async function getBoxscore(update, interaction, setting) {
 
-			let teamLocation = setting ? (teamLocationOriginal == `vTeam` ? `vTeam` : `hTeam`) : (teamLocationOriginal == `vTeam` ? `hTeam` : `vTeam`);
-			let otherTeamLocation = (teamLocation == `vTeam`) ? `hTeam` : `vTeam`;
+			let teamLocation = setting ? (teamLocationOriginal == `awayTeam` ? `awayTeam` : `homeTeam`) : (teamLocationOriginal == `awayTeam` ? `homeTeam` : `awayTeam`);
+			let otherTeamLocation = (teamLocation == `awayTeam`) ? `homeTeam` : `awayTeam`;
 		
 			let embed = new Discord.MessageEmbed()
-				.setTitle(`Boxscore for ${teamEmojis[gameDetails[teamLocation].triCode]} ${gameDetails[teamLocation].triCode} ${(teamLocation == `hTeam`) ? `v` : `@`} ${gameDetails[otherTeamLocation].triCode} ${teamEmojis[gameDetails[otherTeamLocation].triCode]}`)
-				.setDescription(`**Start time**: ${dateObject.toDateString()} ${gameDetails.startTimeEastern}\n**Location**: ${gameDetails.arena.city}, ${gameDetails.arena.name}\n**Attendance**: ${(!gameDetails.attendance) ? `Unknown` : ((parseInt(gameDetails.attendance) == 0) ? `Unknown` : gameDetails.attendance)}`)
-				.setColor(teamColors[gameDetails[teamLocation].triCode]);
+				.setTitle(`Boxscore for ${teamEmojis[gameDetails[teamLocation].teamTricode]} ${gameDetails[teamLocation].teamTricode} ${(teamLocation == `homeTeam`) ? `v` : `@`} ${gameDetails[otherTeamLocation].teamTricode} ${teamEmojis[gameDetails[otherTeamLocation].teamTricode]}`)
+				.setDescription(`**Start time**: ${dateObject.toDateString()}\n**Location**: ${b.game.arena.arenaCity}, ${b.game.arena.arenaName}\n**Attendance**: ${(!b.game.attendance) ? `Unknown` : ((parseInt(b.game.attendance) == 0) ? `Unknown` : b.game.attendance)}`)
+				.setColor(teamColors[gameDetails[teamLocation].teamTricode]);
 
 			let dnp = [];
-			for (var i = 0; i < b.stats.activePlayers.length; i++) {
-				let p = b.stats.activePlayers[i];
-				
-				// Ensuring player is from requested team
-				if (p.teamId != teamIDs[gameDetails[teamLocation].triCode]) continue;
+			for (var i = 0; i < b.game[teamLocation].players.length; i++) {
+				let a = b.game[teamLocation].players[i]
+				let p = a.statistics;
 
 				// Reasoned DNP
-				if (p.dnp) {
-					dnp.push(`**${p.firstName} ${p.lastName}**: ${p.dnp}`);
+				if (a.notPlayingDescription) {
+					dnp.push(`**${a.name}**: ${a.notPlayingDescription}`);
 					continue;
 				}
 
 				// Unreasoned DNP
-				if (p.min == `0:00`) {
-					dnp.push(`**${p.firstName} ${p.lastName}**: Coach's Decision`)
+				if (p.minutes == `PT00M00.00S`) {
+					dnp.push(`**${a.name}**: Coach's Decision`)
+					continue;
+				}
+				if (!p.minutes) {
+					dnp.push(`**${a.name}**: Coach's Decision`)
 					continue;
 				}
 
+				p.min = `${p.minutes.split(`PT`)[0].split(`M`)[0]}:${p.minutes.split(`M`)[1]}`;
+
 				// Actual details
-				let str1 = `__#${p.jersey} **${p.firstName} ${p.lastName}**, ${p.min} mins played__`;
-				let str2 = `\`${p.points}\`pts \`${p.assists}\`ast \`${p.totReb}\`reb \`${p.steals}\`stl \`${p.blocks}\` \`${p.fgm}-${p.fga} ${convertToPercentage(p.fgm, p.fga)}\`fg \`${p.ftm}-${p.fta} ${convertToPercentage(p.ftm, p.fta)}\`ft \`${p.tpm}-${p.tpa} ${convertToPercentage(p.tpm, p.tpa)}\`3p \`${p.pFouls}\`pf`;
+				let str1 = `__#${a.jerseyNum} **${a.name}**, ${p.min} mins played__`;
+				let str2 = `\`${p.points}\`pts \`${p.assists}\`ast \`${p.reboundsTotal}\`reb \`${p.steals}\`stl \`${p.blocks}\` \`${p.fieldGoalsMade}-${p.fieldGoalsAttempted} ${convertToPercentage(p.fieldGoalsMade, p.fieldGoalsAttempted)}\`fg \`${p.freeThrowsMade}-${p.freeThrowsAttempted} ${convertToPercentage(p.freeThrowsMade, p.freeThrowsAttempted)}\`ft \`${p.threePointersMade}-${p.threePointersAttempted} ${convertToPercentage(p.threePointersMade, p.threePointersAttempted)}\`3p \`${p.foulsPersonal}\`pf \`${p.plusMinusPoints}\`+/-`;
 
 				embed.addField(str1, str2);
 			}
@@ -167,13 +181,13 @@ module.exports = {
 			const row = new Discord.MessageActionRow()
 				.addComponents(
 					new Discord.MessageButton()
-						.setCustomId(gameDetails[otherTeamLocation].triCode)
-						.setLabel(`${gameDetails[otherTeamLocation].triCode} boxscore`)
+						.setCustomId(gameDetails[otherTeamLocation].teamTricode)
+						.setLabel(`${gameDetails[otherTeamLocation].teamTricode} boxscore`)
 						.setStyle(`PRIMARY`)
-						.setEmoji(teamEmojis[gameDetails[otherTeamLocation].triCode]),
+						.setEmoji(teamEmojis[gameDetails[otherTeamLocation].teamTricode]),
 
 					new Discord.MessageButton()
-						.setURL(`https://www.nba.com/game/${gameDetails.vTeam.triCode.toLowerCase()}-vs-${gameDetails.hTeam.triCode.toLowerCase()}-${gameID}/box-score`)
+						.setURL(`https://www.nba.com/game/${gameDetails.awayTeam.teamTricode.toLowerCase()}-vs-${gameDetails.homeTeam.teamTricode.toLowerCase()}-${gameID}/box-score`)
 						.setLabel(`NBA.com`)
 						.setStyle(`LINK`),
 				);

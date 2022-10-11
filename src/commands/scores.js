@@ -10,10 +10,12 @@ const formatDate = require(`../methods/format-date.js`);
 const formatTeam = require(`../methods/format-team.js`);
 const formatDuration = require(`../methods/format-duration.js`);
 const getJSON = require(`../methods/get-json.js`);
+const query = require(`../methods/database/query.js`);
 
 // Assets
 const teamEmojis = require(`../assets/teams/emojis.json`);
 const teamColors = require(`../assets/teams/colors.json`);
+const broadcasterEmojis = require(`../assets/broadcaster-emojis.json`);
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -40,6 +42,7 @@ module.exports = {
 		let today = false;
 		if (!requestedDate) { // If no date is specified, find today's date
 			requestedDate = currentDate;
+			today = true;
 		} else {
 			let { runDatabase } = require(`../bot.js`);
 			if (runDatabase) {
@@ -74,7 +77,7 @@ module.exports = {
 							let scoreboard = require(`../cache/${date}/scoreboard.json`);
 
 							let gamesDone = 0;
-							for (var i = 0; i < scoreboard.games.length; i++) { if (scoreboard.games[i].statusNum == 3) gamesDone++; }
+							for (var i = 0; i < scoreboard.games.length; i++) { if (scoreboard.games[i].gameStatus == 3) gamesDone++; }
 							if (gamesDone == scoreboard.games.length) {
 								json = scoreboard;
 								usedCache = true;
@@ -84,7 +87,23 @@ module.exports = {
 				}
 			}
 
-			if (!json) json = await getJSON(`http://data.nba.net/10s/prod/v1/${date}/scoreboard.json`);
+			if (!json) {
+				if (today) {
+					json = await getJSON(`https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json`);
+					json = json.scoreboard;
+				} else {
+					json = await getJSON(`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json`);
+
+					let dates = json.leagueSchedule.gameDates;
+					for (var i = 0; i < dates.length; i++) {
+						let d = new Date(dates[i].gameDate);
+						d = d.toISOString().substring(0, 10).split(`-`).join(``);
+						if (d == date) {
+							json = dates[i];
+						}
+					}
+				}
+			}
 
 			let newDateObject = new Date(Date.UTC(date.substring(0, 4), parseInt(date.substring(4, 6)) - 1, date.substring(6, 8)));
 							
@@ -138,50 +157,70 @@ module.exports = {
 				let c = json.games[i];
 
 				if (requestedTeam) { 
-					if (requestedTeam != c.vTeam.triCode && requestedTeam != c.hTeam.triCode) continue gameLoop; 
+					if (requestedTeam != c.awayTeam.teamTricode && requestedTeam != c.homeTeam.teamTricode) continue gameLoop; 
 				}
 
-				if (c.statusNum == 3) gamesFinished++; 
+				if (c.gameStatus == 3) gamesFinished++; 
 				
-				let str1 = `${(c.statusNum == 1) ? `(${c.vTeam.win}-${c.vTeam.loss})` : ``} ${teamEmojis[c.vTeam.triCode]} ${(c.statusNum == 3 && parseInt(c.vTeam.score) > parseInt(c.hTeam.score)) ? `__` : ``}${c.vTeam.triCode} ${c.vTeam.score}${(c.statusNum == 3 && parseInt(c.vTeam.score) > parseInt(c.hTeam.score)) ? `__` : ``} @ ${(c.statusNum == 3 && parseInt(c.hTeam.score) > parseInt(c.vTeam.score)) ? `__` : ``}${c.hTeam.score} ${c.hTeam.triCode}${(c.statusNum == 3 && parseInt(c.hTeam.score) > parseInt(c.vTeam.score)) ? `__` : ``} ${teamEmojis[c.hTeam.triCode]} ${(c.statusNum == 1) ? `(${c.hTeam.win}-${c.hTeam.loss})` : ``}${(c.statusNum == 1) ? `` : ((c.statusNum == 2) ? `${(c.period.current > 4) ? `| OT` : `| Q`}${c.period.current} ${c.clock}` : `| FINAL ${(c.period.current > 4) ? `${c.period.current - 4}OT` : ``}`)}`;
+				let str1 = ``;
+				if (!today) {
+					if (c.broadcasters) {
+						if (c.broadcasters.nationalTvBroadcasters) {
+							if (c.broadcasters.nationalTvBroadcasters.length > 0) {
+								str1 += `${broadcasterEmojis[c.broadcasters.nationalTvBroadcasters[0].broadcasterAbbreviation]}  `;
+							}
+						}
+					}
+				}
+				str1 += `${(c.gameStatus == 1) ? `(${c.awayTeam.wins}-${c.awayTeam.losses})` : ``} ${teamEmojis[c.awayTeam.teamTricode]} ${(c.gameStatus == 3 && parseInt(c.awayTeam.score) > parseInt(c.homeTeam.score)) ? `__` : ``}${c.awayTeam.teamTricode} ${c.awayTeam.score}${(c.gameStatus == 3 && parseInt(c.awayTeam.score) > parseInt(c.homeTeam.score)) ? `__` : ``} @ ${(c.gameStatus == 3 && parseInt(c.homeTeam.score) > parseInt(c.awayTeam.score)) ? `__` : ``}${c.homeTeam.score} ${c.homeTeam.teamTricode}${(c.gameStatus == 3 && parseInt(c.homeTeam.score) > parseInt(c.awayTeam.score)) ? `__` : ``} ${teamEmojis[c.homeTeam.teamTricode]} ${(c.gameStatus == 1) ? `(${c.homeTeam.wins}-${c.homeTeam.losses}) ` : ``}| ${c.gameStatusText}`;
 				let str2 = ``;
 				if (c.playoffs) str2 += `*${c.playoffs.seriesSummaryText}*\n`;
 
 				// Add countdown if game yet to start
-				if (c.statusNum == 1) { 
-					let msUntilStart = (new Date(c.startTimeUTC).getTime() - new Date().getTime());
-					if (msUntilStart <= 0) {
-						str2 += `Starting at any moment`;
-					} else {
-						str2 += `Starting ${formatDuration(new Date(c.startTimeUTC).getTime())}`;
+				if (c.gameStatus == 1) { 
+					if (c.gameDateTimeUTC) {
+						let msUntilStart = (new Date(c.gameDateTimeUTC).getTime() - new Date().getTime());
+						if (msUntilStart <= 0) {
+							str2 += `Starting at any moment`;
+						} else {
+							str2 += `Starting ${formatDuration(new Date(c.gameDateTimeUTC).getTime())}`;
+						}
+					} else if (c.gameTimeUTC) {
+						let msUntilStart = (new Date(c.gameTimeUTC).getTime() - new Date().getTime());
+						if (msUntilStart <= 0) {
+							str2 += `Starting at any moment`;
+						} else {
+							str2 += `Starting ${formatDuration(new Date(c.gameTimeUTC).getTime())}`;
+						}
 					}
-				} else {
-					str2 += `${(c.nugget.text) ? ((c.nugget.text != `` || c.nugget.text != ` `) ? `Summary: ${c.nugget.text}` : ((c.statusNum == 1) ? `` : `...`)) : ((c.statusNum == 1) ? `` : `...`)}`;
-				}
+				} else str2 += `...`;
 
-				// Game leaders if possible
-				if (str2.endsWith(`...`) && c.statusNum == 3) {
+				// Pause this for lil bit
+				/* Game leaders if possible
+				if (str2.endsWith(`...`) && c.gameStatus == 3) {
 					// Checking if there is a cached boxscore to pull data from
 					if (fs.existsSync(path.join(__dirname, `../cache/${date}/${c.gameId}_boxscore.json`))) {
 						let cachedBoxscore = require(`../cache/${date}/${c.gameId}_boxscore.json`);
 						let leaders = { points: {}, assists: {}, rebounds: {} };
 
 						for (var stat in leaders) {
-							let v = parseInt(cachedBoxscore.stats.vTeam.leaders[stat].value), h = parseInt(cachedBoxscore.stats.hTeam.leaders[stat].value);
+							let v = parseInt(cachedBoxscore.stats.awayTeam.leaders[stat].value), h = parseInt(cachedBoxscore.stats.homeTeam.leaders[stat].value);
 							if (v > h) {
-								leaders[stat] = cachedBoxscore.stats.vTeam.leaders[stat];
+								leaders[stat] = cachedBoxscore.stats.awayTeam.leaders[stat];
 							} else if (v < h) {
-								leaders[stat] = cachedBoxscore.stats.hTeam.leaders[stat];
+								leaders[stat] = cachedBoxscore.stats.homeTeam.leaders[stat];
 							} else {
 								// Merging two player arrays
-								leaders[stat] = cachedBoxscore.stats.vTeam.leaders[stat];
-								leaders[stat].players = leaders[stat].players.concat(cachedBoxscore.stats.hTeam.leaders[stat].players);
+								leaders[stat] = cachedBoxscore.stats.awayTeam.leaders[stat];
+								leaders[stat].players = leaders[stat].players.concat(cachedBoxscore.stats.homeTeam.leaders[stat].players);
 							}
 							console.log(leaders[stat]);
 							let arr = [];
 							playerLoop: for (var j = 0; j < leaders[stat].players.length; j++) {
 								// if (!leaders[stat].players[j].firstName || !leaders[stat].players[j].lastName) continue;
+								console.log(leaders[stat].players[j]);
 								if (typeof leaders[stat].players[j] == `string`) {
+									leaders[stat].players[j] = leaders[stat].players[j].replace(/\s/g, ``).split(`.`).join(`. `)
 									arr.push(`${leaders[stat].players[j].split(` `)[0][0]}. ${leaders[stat].players[j].split(leaders[stat].players[j].split(` `)[0]).join(``)}`);
 								} else if (leaders[stat].players[j].firstName && leaders[stat].players[j].lastName) {
 									arr.push(`${leaders[stat].players[j].firstName.substring(0, 1)}. ${leaders[stat].players[j].lastName}`);
@@ -192,6 +231,13 @@ module.exports = {
 						str2 = str2.substring(0, str2.length - 3);
 						str2 += `**Leaders:** \`${leaders.points.value}\` pts (${leaders.points.players.join(`, `)}), \`${leaders.assists.value}\` ast (${leaders.assists.players.join(`, `)}), \`${leaders.rebounds.value}\` reb (${leaders.rebounds.players.join(`, `)})`;
 					}
+				} */
+
+				if (!str2) str2 = `...`;
+				if (!str1 || !str2) {
+					console.log(str1);
+					console.log(str2);
+					continue;
 				}
 				
 				embed.addField(str1, str2);
@@ -199,6 +245,15 @@ module.exports = {
 			}
 
 			if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });
+
+			let { runDatabase } = require(`../bot.js`);
+			if (runDatabase) {
+				let user = await query(con, `SELECT * FROM users WHERE ID = "${interaction.user.id}"`);
+				user = user[0];
+				if (user.Betting == "y") {
+					embed.setFooter({ text: `See today's simulated betting odds with /odds. Your balance: $${user.Balance.toFixed(2)}.`});
+				}
+			}
 
 			if (update) {
 				if (requestedDate) {

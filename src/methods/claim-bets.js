@@ -17,7 +17,15 @@ module.exports = async (date, userSpecified, teamSpecified) => {
 
             let betsClaimed = 0;
 
-            let json = await getJSON(`http://data.nba.net/10s/prod/v1/${date}/scoreboard.json`);
+            let json = await getJSON(`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json`);
+            let dates = json.leagueSchedule.gameDates;
+            for (var i = 0; i < dates.length; i++) {
+                let d = new Date(dates[i].gameDate);
+                d = d.toISOString().substring(0, 10).split(`-`).join(``);
+                if (d == date) {
+                    json = dates[i];
+                }
+            }
 
             let bets = await query(con, `SELECT * FROM bets WHERE d${date} IS NOT NULL${(userSpecified) ? ` AND ID = "${userSpecified}"` : ``};`);
     
@@ -43,11 +51,11 @@ module.exports = async (date, userSpecified, teamSpecified) => {
 
                     gameLoop: for (var k = 0; k < json.games.length; k++) {
                         let location;
-                        if (json.games[k].vTeam.triCode == details[0] && json.games[k].statusNum == 3) location = `vTeam`;
-                        else if (json.games[k].hTeam.triCode == details[0] && json.games[k].statusNum == 3) location = `hTeam`;
+                        if (json.games[k].awayTeam.teamTricode == details[0] && json.games[k].gameStatus == 3) location = `awayTeam`;
+                        else if (json.games[k].homeTeam.teamTricode == details[0] && json.games[k].gameStatus == 3) location = `homeTeam`;
                         if (!location) continue gameLoop;
 
-                        if (parseInt(json.games[k][location].score) > parseInt(json.games[k][(location == `vTeam` ? `hTeam` : `vTeam`)].score)) { // Bet won
+                        if (parseInt(json.games[k][location].score) > parseInt(json.games[k][(location == `awayTeam` ? `homeTeam` : `awayTeam`)].score)) { // Bet won
                             user.Balance += parseFloat(details[2]);
                             user.Correct++;
                             description += `:green_square: ${teamEmojis[details[0]]} won, $${details[2]} gained.\n`;
@@ -81,7 +89,11 @@ module.exports = async (date, userSpecified, teamSpecified) => {
 
                 let u = await client.users.fetch(user.ID);
                 if (!u) continue userLoop;
-                await u.send({ embeds: [embed] });
+                try {
+                    await u.send({ embeds: [embed] });
+                } catch (e) {
+                    console.log(e);
+                }
 
             }
 

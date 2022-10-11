@@ -20,7 +20,7 @@ module.exports = {
                 .addStringOption(option => option.setName(`team`).setDescription(`An NBA team, e.g. PHX or Lakers.`).setRequired(true)))
         .addSubcommand(subcommand => 
             subcommand
-                .setName(`odds`)
+                .setName(`odds-format`)
                 .setDescription(`Change whether you want odds as decimal or as a US moneyline.`)
                 .addStringOption(option => option.setName(`type`).setDescription(`Either decimal or US.`).addChoices({
                     name: `Decimal`,
@@ -50,6 +50,17 @@ module.exports = {
                 }).addChoices({
                     name: `No`,
                     value: `no`
+                }).setRequired(true)))
+        .addSubcommand(subcommand => 
+            subcommand
+                .setName(`betting`)
+                .setDescription(`Turn on/off all betting functionality.`)
+                .addStringOption(option => option.setName(`choice`).setDescription(`On for betting, Off for no betting`).addChoices({
+                    name: `On`,
+                    value: `on`
+                }).addChoices({
+                    name: `Off`,
+                    value: `off`
                 }).setRequired(true))),
     
 	async execute(variables) {
@@ -72,7 +83,7 @@ module.exports = {
                 return await interaction.reply({ embeds: [embed] });
                 break;
 
-            case `odds`:
+            case `odds-format`:
                 let type = interaction.options.getString(`type`);
                 await query(con, `UPDATE users SET Odds = '${type[0].toLowerCase()}' WHERE ID = '${interaction.user.id}';`);
 
@@ -105,6 +116,17 @@ module.exports = {
                 embed = new Discord.MessageEmbed()
                     .setColor(teamColors.NBA)
                     .addField(`Success! Changed your ad preference to \`${choice}\`.`, `Use any commands with embeds to see this change.`);
+
+                return await interaction.reply({ embeds: [embed] });
+                break;
+
+            case `betting`:
+                let choice2 = interaction.options.getString(`choice`);
+                await query(con, `UPDATE users SET Betting = "${(choice2 == `on`) ? `y` : `n`}" WHERE ID = "${interaction.user.id}";`);
+
+                embed = new Discord.MessageEmbed()
+                    .setColor(teamColors.NBA)
+                    .addField(`Success! Changed your betting preference to \`${choice2}\`.`, `Use any commands (now without) betting to see this change.`);
 
                 return await interaction.reply({ embeds: [embed] });
                 break;

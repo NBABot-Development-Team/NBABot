@@ -26,6 +26,7 @@ module.exports = {
             .setTitle(`__Balance for user ${interaction.user.tag}:__`)
             .setColor((user.FavouriteTeam == `NBA`) ? `#FF4242` : teamColors[user.FavouriteTeam])
             .setThumbnail(interaction.user.avatarURL())
+            .setFooter({ text: `Note: the virtual currency used in NBABot's simulated betting system is NOT REAL and has no value.` })
             .setDescription(`Get an extra $10 in the simulated betting system by using \`/vote\`.`)
             .addField(`Description`, `${user.Description}`, false)
             .addField(`Balance`, `$${user.Balance.toFixed(2)}`, true)

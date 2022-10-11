@@ -62,19 +62,30 @@ module.exports = {
         let json;
         if (today) {
             json = require(`../cache/${currentDate}/scoreboard.json`);
-        } else json = await getJSON(`http://data.nba.net/10s/prod/v1/${date}/scoreboard.json`);
+        } else {
+            json = await getJSON(`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json`);
+
+            let dates = json.leagueSchedule.gameDates;
+            for (var i = 0; i < dates.length; i++) {
+                let d = new Date(dates[i].gameDate);
+                d = d.toISOString().substring(0, 10).split(`-`).join(``);
+                if (d == date) {
+                    json = dates[i];
+                }
+            }
+        }
 
         // Seeing if the game has started
         for (var i = 0; i < json.games.length; i++) {
             let c = json.games[i];
-            if (team == c.vTeam.triCode) {
-                if (c.statusNum != 1 && interaction.user.id != `401649168948396032`) return await interaction.reply({ content: `The game \`${c.vTeam.triCode} @ ${c.hTeam.triCode}\` on \`${date.substring(4, 6)}/${date.substring(6, 8)}/${date.substring(0, 4)}\` has already started so you cannot bet on it.` });
+            if (team == c.awayTeam.teamTricode) {
+                if (c.gameStatus != 1 && interaction.user.id != `401649168948396032`) return await interaction.reply({ content: `The game \`${c.awayTeam.teamTricode} @ ${c.homeTeam.teamTricode}\` on \`${date.substring(4, 6)}/${date.substring(6, 8)}/${date.substring(0, 4)}\` has already started so you cannot bet on it.` });
                 teamLocation = `awayTeam`;
-                gameName = `${c.vTeam.triCode} @ ${c.hTeam.triCode}`;
-            } else if (team == c.hTeam.triCode) {
-                if (c.statusNum != 1 && interaction.user.id != `401649168948396032`) return await interaction.reply({ content: `The game \`${c.vTeam.triCode} @ ${c.hTeam.triCode}\` on \`${date.substring(4, 6)}/${date.substring(6, 8)}/${date.substring(0, 4)}\` has already started so you cannot bet on it.` });
+                gameName = `${c.awayTeam.teamTricode} @ ${c.homeTeam.teamTricode}`;
+            } else if (team == c.homeTeam.teamTricode) {
+                if (c.gameStatus != 1 && interaction.user.id != `401649168948396032`) return await interaction.reply({ content: `The game \`${c.awayTeam.teamTricode} @ ${c.homeTeam.teamTricode}\` on \`${date.substring(4, 6)}/${date.substring(6, 8)}/${date.substring(0, 4)}\` has already started so you cannot bet on it.` });
                 teamLocation = `homeTeam`;
-                gameName = `${c.vTeam.triCode} @ ${c.hTeam.triCode}`;
+                gameName = `${c.awayTeam.teamTricode} @ ${c.homeTeam.teamTricode}`;
             }
         }
         if (!teamLocation) return await interaction.reply({ content: `\`${team}\` did not play on \`${date.substring(4, 6)}/${date.substring(6, 8)}/${date.substring(0, 4)}\`.` });

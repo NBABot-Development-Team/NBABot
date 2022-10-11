@@ -132,7 +132,7 @@ async function Scores() {
 
     let embed = new Discord.MessageEmbed()
         .setTitle(`<:NBA:582679355373649950> Scores for ${dateString}`)
-        .setFooter({ text: `Last edited: `})
+        .setFooter({ text: `Last updated `})
         .setTimestamp()
         .setAuthor({ name: `NBABot (nbabot.js.org)`, iconURL: `https://cdn.discordapp.com/avatars/544017840760422417/2f4585b982abde74155ceaaa4c61d454.png?size=64`, url: `https://nbabot.js.org/`})
         .setDescription(`This message is edited roughly every 20 minutes.`)

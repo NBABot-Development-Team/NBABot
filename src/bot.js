@@ -267,7 +267,25 @@ client.on(`messageCreate`, async message => {
 			// @<> updateodds 20220930 GSW 110 WAS -200
 			if (args.length < 7) return await message.channel.send(`7 arguments required.`);
 
-			let obj = require(`./cache/${args[2]}/odds.json`);
+			let odds = [args[4], args[6]];
+			for (var i = 0; i < odds.length; i++) {
+				if (odds[i].includes(`.`)) {
+					odds[i] = parseFloat(odds[i]);
+					if (odds[i] > 2) {
+						odds[i] = parseInt(100 * (odds[i] - 1));
+					} else {
+						odds[i] = parseInt(100 / (1 - odds[i]));
+					}
+					args[(i == 0) ? 4 : 6] = odds[i];
+				}
+			}
+
+			let obj;
+			try {
+				obj = require(`./cache/${args[2]}/odds.json`);
+			} catch (e) {
+				obj = {};
+			}
 			obj[`${args[3].toUpperCase()} @ ${args[5].toUpperCase()}`] = {awayTeamOdds: {moneyLine: parseInt(args[4])}, homeTeamOdds: {moneyLine: parseInt(args[6])}};
 	
 			fs.writeFileSync(`./cache/${args[2]}/odds.json`, JSON.stringify(obj), err => console.log(err));
@@ -377,7 +395,10 @@ client.on(`interactionCreate`, async interaction => {
 		let users = await query(con, `SELECT * FROM users WHERE Donator <> "n";`);
 		let removeAds = false;
 		userLoop: for (var i = 0; i < users.length; i++) {
-			if (users[i].AdFreeServer == interaction.guild.id) {
+			if (!users[i].AdFreeServer) continue;
+			if (!users[i].AdFreeServer.split(`,`)) continue;
+			if (users[i].AdFreeServer.split(`,`).length == 0) continue;
+			if (users[i].AdFreeServer.split(`,`).includes(interaction.guild.id)) {
 				removeAds = true;
 				break userLoop;
 			}
@@ -492,7 +513,7 @@ async function DonatorScores() {
         .setTitle(`${teamEmojis.NBA} NBA Scores for ${dateObject.toDateString()}`)
         .setColor(teamColors.NBA)
 		.setTimestamp()
-		.setFooter({ text: `Last updated: `});
+		.setFooter({ text: `Last updated `});
 
     // Getting/formating scores embed
     let json = await getJSON(`http://data.nba.net/10s/prod/v1/${currentDate}/scoreboard.json`);
@@ -550,6 +571,7 @@ async function DonatorScores() {
                     playerLoop: for (var j = 0; j < leaders[stat].players.length; j++) {
                         // if (!leaders[stat].players[j].firstName || !leaders[stat].players[j].lastName) continue;
                         if (typeof leaders[stat].players[j] == `string`) {
+							leaders[stat].players[j] = leaders[stat].players[j].replace(/\s/g, ``).split(`.`).join(`. `)
                             arr.push(`${leaders[stat].players[j].split(` `)[0][0]}. ${leaders[stat].players[j].split(leaders[stat].players[j].split(` `)[0]).join(``)}`);
                         } else if (leaders[stat].players[j].firstName && leaders[stat].players[j].lastName) {
                             arr.push(`${leaders[stat].players[j].firstName.substring(0, 1)}. ${leaders[stat].players[j].lastName}`);

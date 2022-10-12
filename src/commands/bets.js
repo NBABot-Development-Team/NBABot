@@ -47,9 +47,18 @@ module.exports = {
             let str1 = `__${date.toDateString()} (${date2}):__`;
             let str2 = ``;
 
+            // e.g. OKC|10|29.30
+
+            let totalPlaced = 0, totalPayout = 0;
             for (var i = 0; i < bets[key].split(`,`).length; i++) {
                 let details = bets[key].split(`,`)[i].split(`|`);
                 str2 += `\`$${parseFloat(details[1]).toFixed(2)}\` on ${teamEmojis[details[0]]} (payout: \`$${parseFloat(details[2]).toFixed(2)}\`)\n`;
+                totalPlaced += parseFloat(details[1]);
+                totalPayout += parseFloat(details[2]);
+            }
+            
+            if (bets[key].split(`,`).length > 1) {
+                str2 += `Total placed: \`$${totalPlaced.toFixed(2)}\`, Total payout: \`$${totalPayout.toFixed(2)}\`.`
             }
 
             fields++;

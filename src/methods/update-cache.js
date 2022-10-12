@@ -250,4 +250,10 @@ module.exports = {
 			}
 		});
 	},
+
+	async cleanUpBetsColumns(con) {
+		let all = await query(con, `SHOW COLUMNS FROM BETS;`);
+
+		console.log(all);
+	}
 }

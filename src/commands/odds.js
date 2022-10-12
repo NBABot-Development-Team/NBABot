@@ -61,7 +61,7 @@ module.exports = {
             .setTitle(`Odds for ${dateObject.toDateString()}`)
             .setColor(0xff4242)
             .setFooter({ text: `Turn betting functionality off with /settings betting off .`})
-            .setDescription(`To place a bet, use \`/bet\`.\nMake sure to claim the bet after the game has finished with \`/claim\`.`);
+            .setDescription(`To place a bet, use \`/bet\`.\nMake sure to claim the bet after the game has finished with \`/claim\`.\nTo change the odds format, use \`/settings odds-format us/decimal\`.`);
 
         // Getting odds type
         let oddsType = await query(con, `SELECT * FROM users WHERE ID = '${interaction.user.id}';`);

@@ -1,9 +1,13 @@
 // Libraries
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const Discord = require(`discord.js`);
+const fs = require(`fs`);
+const { REST } = require('@discordjs/rest');
+const { Routes } = require('discord-api-types/v9');
 
 // Assets
 const teamColors = require(`../assets/teams/colors.json`);
+const config = require(`../config.json`);
 
 // Methods
 const query = require(`../methods/database/query.js`);
@@ -61,7 +65,24 @@ module.exports = {
                 }).addChoices({
                     name: `Off`,
                     value: `off`
+                }).setRequired(true)))
+        .addSubcommand(subcommand => 
+            subcommand
+                .setName(`server-betting`)
+                .setDescription(`(Manage server permission required) Turn on/off all betting in a server.`)
+                .addStringOption(option => option.setName(`choice`).setDescription(`On for betting, Off for no betting`).addChoices({
+                    name: `On`,
+                    value: `on`
+                }).addChoices({
+                    name: `Off`,
+                    value: `off`
                 }).setRequired(true))),
+       /*.addSubcommand(subcommand =>
+            subcommand
+                .setName(`timezone`)
+                .setDescription(`Change your timezone, by default it is ET.`)
+                .addStringOption(option => option.setName(`timezone`).setDescription(`In the form UTC+X or UTC-X where X is hours, e.g. UTC-4.`)).setRequired(false)),
+        */
     
 	async execute(variables) {
 		let { con, interaction } = variables;
@@ -127,6 +148,65 @@ module.exports = {
                 embed = new Discord.MessageEmbed()
                     .setColor(teamColors.NBA)
                     .addField(`Success! Changed your betting preference to \`${choice2}\`.`, `Use any commands (now without) betting to see this change.`);
+
+                return await interaction.reply({ embeds: [embed] });
+                break;
+
+            case `server-betting`:
+                if (!interaction.member.permissions.has(`MANAGE_GUILD`)) return await interaction.reply(`To change this setting, you need the \`MANAGE_SERVER\` permission. Ask someone with this permission to change this.`);   
+                let choice3 = interaction.options.getString(`choice`);
+
+                let guild = await query(con, `SELECT * FROM guilds WHERE ID = "${interaction.guild.id}";`), guildExists = true;
+                if (!guild) guildExists = false;
+                else if (guild.length == 0) guildExists = false;
+                if (!guildExists) await query(con, `INSERT INTO guilds VALUES (${interaction.guild.id}, 1, "y");`);
+
+                await query(con, `UPDATE guilds SET Betting = "${(choice3 == `on`) ? `y` : `n`}" WHERE ID = "${interaction.guild.id}";`);
+
+                embed = new Discord.MessageEmbed()
+                    .setColor(teamColors.NBA)
+                    .addField(`Success! Changed your server's betting preference to ${choice3}.`, `Betting commands have been ${(choice3 == `on`) ? `added to` : `removed from`} this server.`);
+                
+                const commands = [];
+                const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
+        
+                let { runDatabase } = require(`../bot.js`);
+                commandLoop: for (const file of commandFiles) {
+                    let databaseInvolvedCommands = [`balance`, `bet`, `bets`, `claim`, `img-add`, `img-delete`, `img`, `imgs`, `leaderboard`, `rbet`, `reset-balance`, `settings`];
+                    if (databaseInvolvedCommands.includes(file.split(`.`)[0]) && !runDatabase) continue commandLoop;
+
+                    let bettingCommands = [`balance`, `bet`, `bets`, `claim`, `leaderboard`, `odds`, `rbet`, `reset-balance`, `weekly`];
+                    if (choice3 == `off` && bettingCommands.includes(file.split(`.`)[0])) continue commandLoop;
+
+                    const command = require(`./${file}`);
+                    commands.push(command.data.toJSON());
+                }
+        
+                const rest = new REST({ version: '9' }).setToken(config.token);
+        
+                rest.put(Routes.applicationGuildCommands(config.clientId, interaction.guild.id), { body: commands })
+                    .then(async () => {
+                        console.log('Successfully registered application commands for guild ${message.guild.id}.');
+                        
+                        let version = await query(con, `SELECT Version FROM guilds WHERE ID = "current";`);
+                        version = version[0].Version;
+                        console.log(version);
+                        let guild = await query(con, `SELECT * FROM guilds WHERE ID = "${interaction.guild.id}";`), guildExists = true;
+                        console.log(guild);
+                        if (!guild) guildExists = false;
+                        else if (guild.length == 0) guildExists = false;
+    
+                        if (guildExists) {
+                            // ...
+                        } else {
+                            await query(con, `INSERT INTO guilds VALUES ("${interaction.guild.id}", ${version}, "${(choice3 == `on` ? `y` : `n`)}");`);
+                        }
+                    })
+                    .catch(async error => {
+                        if (error) {
+                            console.log(error);
+                        }
+                    });
 
                 return await interaction.reply({ embeds: [embed] });
                 break;

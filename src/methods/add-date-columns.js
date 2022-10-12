@@ -9,3 +9,6 @@ let con = mysql.createConnection({
 });
 
 con.connect();
+
+let a = new Date();
+

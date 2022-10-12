@@ -70,9 +70,25 @@ function updateCommands(ID) {
 		const commands = [];
 		const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 
+		let version = await query(con, `SELECT * FROM guilds WHERE ID = "current";`);
+		version = version[0].Version;
+		let guildResult = await query(con, `SELECT * FROM guilds WHERE ID = "${ID}";`), guildExists = true;
+		if (!guildResult) guildExists = false;
+		else if (guildResult.length == 0) guildExists = false;
+
+		if (guildExists) {
+			await query(con, `UPDATE guilds SET Version = ${version} WHERE ID = "${ID}";`);
+			guildResult = guildResult[0];
+		} else {
+			await query(con, `INSERT INTO guilds VALUES ("${ID}", ${version}, "y");`);
+			guildResult = {ID: ID, Version: version, Betting: `y`};
+		}
+
 		commandLoop: for (const file of commandFiles) {
 			let databaseInvolvedCommands = [`balance`, `bet`, `bets`, `claim`, `img-add`, `img-delete`, `img`, `imgs`, `leaderboard`, `rbet`, `reset-balance`, `settings`];
 			if (databaseInvolvedCommands.includes(file.split(`.`)[0]) && !runDatabase) continue commandLoop;
+			let bettingCommands = [`balance`, `bet`, `bets`, `claim`, `leaderboard`, `odds`, `rbet`, `reset-balance`, `weekly`];
+			if (guildResult.Betting == `n` && bettingCommands.includes(file.split(`.`)[0])) continue commandLoop;
 			const command = require(`./commands/${file}`);
 			commands.push(command.data.toJSON());
 		}
@@ -80,19 +96,6 @@ function updateCommands(ID) {
 		const rest = new REST({ version: '9' }).setToken(config.token);
 		rest.put(Routes.applicationGuildCommands(config.clientId, ID), { body: commands })
 			.then(async () => {
-
-				let version = await query(con, `SELECT Version FROM guilds WHERE ID = "current";`);
-				version = version[0].Version;
-				let guildResult = await query(con, `SELECT * FROM guilds WHERE ID = "${ID}";`), guildExists = true;
-				if (!guildResult) guildExists = false;
-				else if (guildResult.length == 0) guildExists = false;
-
-				if (guildExists) {
-					await query(con, `UPDATE guilds SET Version = ${version} WHERE ID = "${ID}";`);
-				} else {
-					await query(con, `INSERT INTO guilds VALUES ("${ID}", ${version});`);
-				}
-
 				resolve();
 			})
 			.catch(err => {
@@ -119,9 +122,28 @@ client.on(`guildCreate`, async guild => {
 	const commands = [];
 	const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 
+	let version = await query(con, `SELECT Version FROM guilds WHERE ID = "current";`);
+	version = version[0].Version;
+	console.log(version);
+	let guildResult = await query(con, `SELECT * FROM guilds WHERE ID = "${guild.id}";`), guildExists = true;
+	if (!guildResult) guildExists = false;
+	else if (guildResult.length == 0) guildExists = false;
+
+	if (guildExists) {
+		await query(con, `UPDATE guilds SET Version = ${version} WHERE ID = "${guild.id}";`);
+		guildResult = guildResult[0];
+	} else {
+		await query(con, `INSERT INTO guilds VALUES ("${guild.id}", ${version}, "y");`);
+		guildResult = {ID: guild.id, Version: version, Betting: `y`};
+	}
+
 	commandLoop: for (const file of commandFiles) {
 		let databaseInvolvedCommands = [`balance`, `bet`, `bets`, `claim`, `img-add`, `img-delete`, `img`, `imgs`, `leaderboard`, `rbet`, `reset-balance`, `settings`];
 		if (databaseInvolvedCommands.includes(file.split(`.`)[0]) && !runDatabase) continue commandLoop;
+
+		let bettingCommands = [`balance`, `bet`, `bets`, `claim`, `leaderboard`, `odds`, `rbet`, `reset-balance`, `weekly`];
+		if (guildResult.Betting == `n` && bettingCommands.includes(file.split(`.`)[0])) continue commandLoop;
+
 		const command = require(`./commands/${file}`);
 		commands.push(command.data.toJSON());
 	}
@@ -130,30 +152,7 @@ client.on(`guildCreate`, async guild => {
 
 	rest.put(Routes.applicationGuildCommands(config.clientId, guild.id), { body: commands })
 		.then(async () => {
-			let guildCommands = await guild.commands.fetch();
-			let commandsInstalledAtAll = false;
-			guildCommands.map(async command => {
-				if (command.applicationId == (config.clientId)) {
-					commandsInstalledAtAll = true;
-				}
-			});
-
-			if (commandsInstalledAtAll) {
-				console.log('Successfully registered application commands for guild ${message.guild.id}.');
-				
-				let version = await query(con, `SELECT Version FROM guilds WHERE ID = "current";`);
-				version = version[0].Version;
-				console.log(version);
-				let guildResult = await query(con, `SELECT * FROM guilds WHERE ID = "${guild.id}";`), guildExists = true;
-				if (!guildResult) guildExists = false;
-				else if (guildResult.length == 0) guildExists = false;
-
-				if (guildExists) {
-					await query(con, `UPDATE guilds SET Version = ${version} WHERE ID = "${guild.id}";`);
-				} else {
-					await query(con, `INSERT INTO guilds VALUES ("${guild.id}", ${version});`);
-				}
-			}
+			console.log('Successfully registered application commands for guild ${message.guild.id}.');
 		});
 });
 
@@ -166,15 +165,35 @@ client.on(`messageCreate`, async message => {
 	if (!args[0]) return;
 	if (!args[1]) return;
 
+	// Finding out if server has betting
+
 	if (args[1].toLowerCase() == `update`) {
 		let msg = await message.channel.send(`Updating...`);
 
 		const commands = [];
 		const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 
+		let version = await query(con, `SELECT Version FROM guilds WHERE ID = "current";`);
+		version = version[0].Version;
+		let guild = await query(con, `SELECT * FROM guilds WHERE ID = "${message.guild.id}";`), guildExists = true;
+		if (!guild) guildExists = false;
+		else if (guild.length == 0) guildExists = false;
+
+		if (guildExists) {
+			await query(con, `UPDATE guilds SET Version = ${version} WHERE ID = "${message.guild.id}";`);
+			guild = guild[0];
+		} else {
+			await query(con, `INSERT INTO guilds VALUES ("${message.guild.id}", ${version}, "y");`);
+			guild = {ID: message.guild.id, Version: version, Betting: `y`};
+		}
+
 		commandLoop: for (const file of commandFiles) {
 			let databaseInvolvedCommands = [`balance`, `bet`, `bets`, `claim`, `img-add`, `img-delete`, `img`, `imgs`, `leaderboard`, `rbet`, `reset-balance`, `settings`];
 			if (databaseInvolvedCommands.includes(file.split(`.`)[0]) && !runDatabase) continue commandLoop;
+
+			let bettingCommands = [`balance`, `bet`, `bets`, `claim`, `leaderboard`, `odds`, `rbet`, `reset-balance`, `weekly`];
+			if (guild.Betting == `n` && bettingCommands.includes(file.split(`.`)[0])) continue commandLoop;
+			
 			const command = require(`./commands/${file}`);
 			commands.push(command.data.toJSON());
 		}
@@ -183,28 +202,9 @@ client.on(`messageCreate`, async message => {
 
 		rest.put(Routes.applicationGuildCommands(config.clientId, message.guild.id), { body: commands })
 			.then(async () => {
-				let guildCommands = await message.guild.commands.fetch();
-				let commandsInstalledAtAll = true;
+				console.log('Successfully registered application commands for guild ${message.guild.id}.');
 
-				if (commandsInstalledAtAll) {
-					console.log('Successfully registered application commands for guild ${message.guild.id}.');
-					
-					let version = await query(con, `SELECT Version FROM guilds WHERE ID = "current";`);
-					version = version[0].Version;
-					console.log(version);
-					let guild = await query(con, `SELECT * FROM guilds WHERE ID = "${message.guild.id}";`), guildExists = true;
-					console.log(guild);
-					if (!guild) guildExists = false;
-					else if (guild.length == 0) guildExists = false;
-
-					if (guildExists) {
-						await query(con, `UPDATE guilds SET Version = ${version} WHERE ID = "${message.guild.id}";`);
-					} else {
-						await query(con, `INSERT INTO guilds VALUES ("${message.guild.id}", ${version});`);
-					}
-
-					return await msg.edit(`Slash commands successfully added, enjoy!`);
-				} else return await msg.edit(`:no_entry_sign: Unable to add slash commands, give NBABot permission here: **https://discord.com/api/oauth2/authorize?client_id=544017840760422417&permissions=534723816512&scope=bot%20applications.commands**.`);
+				return await msg.edit(`Slash commands successfully added, enjoy!`);
 			})
 			.catch(async error => {
 				if (error) {
@@ -385,6 +385,19 @@ client.on(`interactionCreate`, async interaction => {
 		}
 	}
 
+	let guild = await query(con, `SELECT * FROM guilds WHERE ID = "${interaction.guild.id}";`), guildExists = true;
+	if (!guild) guildExists = false;
+	else if (guild.length == 0) guildExists = false;
+
+	if (guildExists) {
+		guild = guild[0];
+	} else {
+		await query(con, `INSERT INTO guilds VALUES ("${message.guild.id}", ${version}, "y");`);
+		guild = {ID: message.guild.id, Version: version, Betting: `y`};
+	}
+
+	let betting = (guild.Betting == `y`) ? true : false;
+
 	let ad = null;
 	// Run command
 	if (runDatabase) {
@@ -409,8 +422,19 @@ client.on(`interactionCreate`, async interaction => {
 			let ads = require(`./config.json`).ads;
 			ad = ads[randInt(0, ads.length - 1)];
 		}
+
+		// Checking for betting disabled for server or user
+		if (!betting && config.bettingCommands.includes(interaction.commandName)) {
+			return await interaction.reply(`Betting is disabled in this server.`);
+		}
+		if (user.Betting == `n` && config.bettingCommands.includes(interaction.commandName)) {
+			return await interaction.reply(`Betting is disabled for this user. Change this with \`/settings betting\`.`);
+		}
+
+		if (user.Betting == `n`) betting = false;
+
 		try {
-			await command.execute({ interaction, client, con, ad });
+			await command.execute({ interaction, client, con, ad, betting });
 		} catch (error) {
 			console.log(error);
 			logger.error(error);
@@ -516,7 +540,18 @@ async function DonatorScores() {
 		.setFooter({ text: `Last updated `});
 
     // Getting/formating scores embed
-    let json = await getJSON(`http://data.nba.net/10s/prod/v1/${currentDate}/scoreboard.json`);
+
+	// Seeing whether I can fetch from cache or a new request is needed
+	let json, usedCache = false;
+	if (fs.existsSync(`./cache/${currentDate}/`)) {
+		if (fs.existsSync(`./cache/${currentDate}/scoreboard.json`)) {
+			json = require(`./cache/${currentDate}/scoreboard.json`);
+			usedCache = true;
+		}
+	}
+	if (!json) {
+		json = await getJSON(`https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json`);
+	}
 
     // Checking if the API reponse is valid
     let numGames = 1;
@@ -531,58 +566,28 @@ async function DonatorScores() {
     gameLoop: for (var i = 0; i < json.games.length; i++) {
         let c = json.games[i];
 
-        if (c.statusNum == 3) gamesFinished++; 
-        
-        let str1 = `${(c.statusNum == 1) ? `(${c.vTeam.win}-${c.vTeam.loss})` : ``} ${teamEmojis[c.vTeam.triCode]} ${(c.statusNum == 3 && parseInt(c.vTeam.score) > parseInt(c.hTeam.score)) ? `__` : ``}${c.vTeam.triCode} ${c.vTeam.score}${(c.statusNum == 3 && parseInt(c.vTeam.score) > parseInt(c.hTeam.score)) ? `__` : ``} @ ${(c.statusNum == 3 && parseInt(c.hTeam.score) > parseInt(c.vTeam.score)) ? `__` : ``}${c.hTeam.score} ${c.hTeam.triCode}${(c.statusNum == 3 && parseInt(c.hTeam.score) > parseInt(c.vTeam.score)) ? `__` : ``} ${teamEmojis[c.hTeam.triCode]} ${(c.statusNum == 1) ? `(${c.hTeam.win}-${c.hTeam.loss})` : ``}${(c.statusNum == 1) ? `` : ((c.statusNum == 2) ? `${(c.period.current > 4) ? `| OT` : `| Q`}${c.period.current} ${c.clock}` : `| FINAL ${(c.period.current > 4) ? `${c.period.current - 4}OT` : ``}`)}`;
-        let str2 = ``;
-        if (c.playoffs) str2 += `*${c.playoffs.seriesSummaryText}*\n`;
+        if (c.gameStatus == 3) gamesFinished++; 
 
-        // Add countdown if game yet to start
-        if (c.statusNum == 1) { 
-            let msUntilStart = (new Date(c.startTimeUTC).getTime() - new Date().getTime());
-            if (msUntilStart <= 0) {
-                str2 += `Starting at any moment`;
-            } else {
-                str2 += `Starting ${formatDuration(new Date(c.startTimeUTC).getTime())}`;
-            }
-        } else {
-            str2 += `${(c.nugget.text) ? ((c.nugget.text != `` || c.nugget.text != ` `) ? `Summary: ${c.nugget.text}` : ((c.statusNum == 1) ? `` : `...`)) : ((c.statusNum == 1) ? `` : `...`)}`;
-        }
-
-        // Game leaders if possible
-        if (str2.endsWith(`...`) && c.statusNum == 3) {
-            // Checking if there is a cached boxscore to pull data from
-            if (fs.existsSync(path.join(__dirname, `./cache/${currentDate}/${c.gameId}_boxscore.json`))) {
-                let cachedBoxscore = require(`./cache/${currentDate}/${c.gameId}_boxscore.json`);
-                let leaders = { points: {}, assists: {}, rebounds: {} };
-
-                for (var stat in leaders) {
-                    let v = parseInt(cachedBoxscore.stats.vTeam.leaders[stat].value), h = parseInt(cachedBoxscore.stats.hTeam.leaders[stat].value);
-                    if (v > h) {
-                        leaders[stat] = cachedBoxscore.stats.vTeam.leaders[stat];
-                    } else if (v < h) {
-                        leaders[stat] = cachedBoxscore.stats.hTeam.leaders[stat];
-                    } else {
-                        // Merging two player arrays
-                        leaders[stat] = cachedBoxscore.stats.vTeam.leaders[stat];
-                        leaders[stat].players = leaders[stat].players.concat(cachedBoxscore.stats.hTeam.leaders[stat].players);
-                    }
-                    let arr = [];
-                    playerLoop: for (var j = 0; j < leaders[stat].players.length; j++) {
-                        // if (!leaders[stat].players[j].firstName || !leaders[stat].players[j].lastName) continue;
-                        if (typeof leaders[stat].players[j] == `string`) {
-							leaders[stat].players[j] = leaders[stat].players[j].replace(/\s/g, ``).split(`.`).join(`. `)
-                            arr.push(`${leaders[stat].players[j].split(` `)[0][0]}. ${leaders[stat].players[j].split(leaders[stat].players[j].split(` `)[0]).join(``)}`);
-                        } else if (leaders[stat].players[j].firstName && leaders[stat].players[j].lastName) {
-                            arr.push(`${leaders[stat].players[j].firstName.substring(0, 1)}. ${leaders[stat].players[j].lastName}`);
-                        } else continue playerLoop;
-                    }
-                    leaders[stat].players = arr;
-                }
-                str2 = str2.substring(0, str2.length - 3);
-                str2 += `**Leaders:** \`${leaders.points.value}\` pts (${leaders.points.players.join(`, `)}), \`${leaders.assists.value}\` ast (${leaders.assists.players.join(`, `)}), \`${leaders.rebounds.value}\` reb (${leaders.rebounds.players.join(`, `)})`;
-            }
-        }
+		let str1 = `${(c.gameStatus == 1) ? `(${c.awayTeam.wins}-${c.awayTeam.losses})` : ``} ${teamEmojis[c.awayTeam.teamTricode]} ${(c.gameStatus == 3 && parseInt(c.awayTeam.score) > parseInt(c.homeTeam.score)) ? `__` : ``}${c.awayTeam.teamTricode} ${c.awayTeam.score}${(c.gameStatus == 3 && parseInt(c.awayTeam.score) > parseInt(c.homeTeam.score)) ? `__` : ``} @ ${(c.gameStatus == 3 && parseInt(c.homeTeam.score) > parseInt(c.awayTeam.score)) ? `__` : ``}${c.homeTeam.score} ${c.homeTeam.teamTricode}${(c.gameStatus == 3 && parseInt(c.homeTeam.score) > parseInt(c.awayTeam.score)) ? `__` : ``} ${teamEmojis[c.homeTeam.teamTricode]} ${(c.gameStatus == 1) ? `(${c.homeTeam.wins}-${c.homeTeam.losses}) ` : ``}| ${c.gameStatusText}`;
+		let str2 = ``;
+		// Add countdown if game yet to start
+		if (c.gameStatus == 1) { 
+			if (c.gameDateTimeUTC) {
+				let msUntilStart = (new Date(c.gameDateTimeUTC).getTime() - new Date().getTime());
+				if (msUntilStart <= 0) {
+					str2 += `Starting at any moment`;
+				} else {
+					str2 += `Starting ${formatDuration(new Date(c.gameDateTimeUTC).getTime())}`;
+				}
+			} else if (c.gameTimeUTC) {
+				let msUntilStart = (new Date(c.gameTimeUTC).getTime() - new Date().getTime());
+				if (msUntilStart <= 0) {
+					str2 += `Starting at any moment`;
+				} else {
+					str2 += `Starting ${formatDuration(new Date(c.gameTimeUTC).getTime())}`;
+				}
+			}
+		} else str2 += `...`;
         
         embed.addField(str1, str2);
         embedsAdded++;

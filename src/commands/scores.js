@@ -25,7 +25,7 @@ module.exports = {
 		.addStringOption(option => option.setName(`team`).setDescription(`The specific team whose score you want to see.`)),
 		
 	async execute(variables) {
-		let { interaction, con, ad } = variables;
+		let { interaction, con, ad, betting } = variables;
 		let interactionSource = interaction;
 
 		// Getting date
@@ -250,7 +250,7 @@ module.exports = {
 			if (runDatabase) {
 				let user = await query(con, `SELECT * FROM users WHERE ID = "${interaction.user.id}"`);
 				user = user[0];
-				if (user.Betting == "y") {
+				if (user.Betting == "y" || !betting) {
 					embed.setFooter({ text: `See today's simulated betting odds with /odds. Your balance: $${user.Balance.toFixed(2)}.`});
 				}
 			}

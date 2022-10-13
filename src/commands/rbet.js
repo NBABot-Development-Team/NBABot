@@ -42,13 +42,24 @@ module.exports = {
         let json;
         if (today) {
             json = require(`../cache/${date}/scoreboard.json`);
-        } else json = await getJSON(`http://data.nba.net/10s/prod/v1/${date}/scoreboard.json`);
+        } else {
+            json = await getJSON(`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json`);
+
+            let dates = json.leagueSchedule.gameDates;
+            for (var i = 0; i < dates.length; i++) {
+                let d = new Date(dates[i].gameDate);
+                d = d.toISOString().substring(0, 10).split(`-`).join(``);
+                if (d == date) {
+                    json = dates[i];
+                }
+            }
+        }
 
         // Checking that the game hasn't started
         for (var i = 0; i < json.games.length; i++) {
-            if ([json.games[i].vTeam.triCode, json.games[i].hTeam.triCode].includes(team)) {
-                if (json.games[i].statusNum > 1) {
-                    return await interaction.reply({ content: `The game \`${json.games[i].vTeam.triCode} @ ${json.games[i].hTeam.triCode}\` on \`${date.substring(4, 6)}/${date.substring(6, 8)}/${date.substring(0, 4)}\` has already started so the bet cannot be retracted.` });
+            if ([json.games[i].awayTeam.teamTricode, json.games[i].homeTeam.teamTricode].includes(team)) {
+                if (json.games[i].gameStatus > 1) {
+                    return await interaction.reply({ content: `The game \`${json.games[i].awayTeam.teamTricode} @ ${json.games[i].homeTeam.teamTricode}\` on \`${date.substring(4, 6)}/${date.substring(6, 8)}/${date.substring(0, 4)}\` has already started so the bet cannot be retracted.` });
                 }
             }
         }

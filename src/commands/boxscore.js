@@ -94,7 +94,7 @@ module.exports = {
 		}
 		
 		// Getting date object
-		let dateObject = new Date(gameDetails.gameEt);
+		let dateObject = new Date(gameDetails.gameTimeUTC);
 
 		// Checking if game is yet to start
 		if (gameDetails.gameStatus == 1) {
@@ -165,11 +165,11 @@ module.exports = {
 					continue;
 				}
 
-				p.min = `${p.minutes.split(`PT`)[0].split(`M`)[0]}:${p.minutes.split(`M`)[1]}`;
+				p.min = `${p.minutes.split(`PT`).join(``).split(`M`)[0]}:${p.minutes.split(`M`)[1].split(`.`)[0]}`;
 
 				// Actual details
 				let str1 = `__#${a.jerseyNum} **${a.name}**, ${p.min} mins played__`;
-				let str2 = `\`${p.points}\`pts \`${p.assists}\`ast \`${p.reboundsTotal}\`reb \`${p.steals}\`stl \`${p.blocks}\` \`${p.fieldGoalsMade}-${p.fieldGoalsAttempted} ${convertToPercentage(p.fieldGoalsMade, p.fieldGoalsAttempted)}\`fg \`${p.freeThrowsMade}-${p.freeThrowsAttempted} ${convertToPercentage(p.freeThrowsMade, p.freeThrowsAttempted)}\`ft \`${p.threePointersMade}-${p.threePointersAttempted} ${convertToPercentage(p.threePointersMade, p.threePointersAttempted)}\`3p \`${p.foulsPersonal}\`pf \`${p.plusMinusPoints}\`+/-`;
+				let str2 = `\`${p.points}\`pts \`${p.assists}\`ast \`${p.reboundsTotal}\`reb \`${p.steals}\`stl \`${p.blocks}\`blk \`${p.fieldGoalsMade}-${p.fieldGoalsAttempted} ${convertToPercentage(p.fieldGoalsMade, p.fieldGoalsAttempted)}\`fg \`${p.freeThrowsMade}-${p.freeThrowsAttempted} ${convertToPercentage(p.freeThrowsMade, p.freeThrowsAttempted)}\`ft \`${p.threePointersMade}-${p.threePointersAttempted} ${convertToPercentage(p.threePointersMade, p.threePointersAttempted)}\`3p \`${p.foulsPersonal}\`pf \`${p.plusMinusPoints}\`+/-`;
 
 				embed.addField(str1, str2);
 			}

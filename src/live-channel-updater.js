@@ -1,6 +1,7 @@
 // Libraries
 const Discord = require(`discord.js`);
 const mysql = require(`mysql`);
+const fs = require(`fs`);
 
 const client = new Discord.Client({ intents: [Discord.Intents.FLAGS.GUILDS, Discord.Intents.FLAGS.GUILD_MESSAGES] });
 
@@ -122,11 +123,23 @@ async function Scores() {
     let scoreMessage = await getValue(con, `scores_messages`, `Date`, currentDate);
     if (!scoreMessage) createMessage = true;
 
-    let b = await getJSON(`http://data.nba.net/10s/prod/v1/${currentDate}/scoreboard.json`);
+	// Seeing whether I can fetch from cache or a new request is needed
+	let b, usedCache = false;
+	if (fs.existsSync(`./cache/${currentDate}/`)) {
+		if (fs.existsSync(`./cache/${currentDate}/scoreboard.json`)) {
+			b = require(`./cache/${currentDate}/scoreboard.json`);
+			usedCache = true;
+		}
+	}
+	if (!b) {
+		b = await getJSON(`https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json`);
+	}
 
     if (!b) return;
     if (!b.games) return;
     if (b.games.length == 0) return;
+
+    let json = b;
 
     let dateString = new Date(currentDate.substring(0, 4), parseInt(currentDate.substring(4, 6)) - 1, currentDate.substring(6, 8)).toDateString();
 
@@ -139,36 +152,39 @@ async function Scores() {
         .setColor(teamColors.NBA);
 
     let gamesStillOn = 0;
-    for (var i = 0; i < b.games.length; i++) {
-        let hTeam, vTeam;
-        let c = b.games[i];
-        console.log(c.vTeam);
-        console.log(c.hTeam);
+
+    // Cycle through each game and add details to a field
+    let gamesFinished = 0;
+    let embedsAdded = 0;
+    gameLoop: for (var i = 0; i < json.games.length; i++) {
+        let c = json.games[i];
+
+        if (c.gameStatus == 3) gamesFinished++; 
+        if (c.gameStatus < 3) gamesStillOn++;
+
+		let str1 = `${(c.gameStatus == 1) ? `(${c.awayTeam.wins}-${c.awayTeam.losses})` : ``} ${teamEmojis[c.awayTeam.teamTricode]} ${(c.gameStatus == 3 && parseInt(c.awayTeam.score) > parseInt(c.homeTeam.score)) ? `__` : ``}${c.awayTeam.teamTricode} ${c.awayTeam.score}${(c.gameStatus == 3 && parseInt(c.awayTeam.score) > parseInt(c.homeTeam.score)) ? `__` : ``} @ ${(c.gameStatus == 3 && parseInt(c.homeTeam.score) > parseInt(c.awayTeam.score)) ? `__` : ``}${c.homeTeam.score} ${c.homeTeam.teamTricode}${(c.gameStatus == 3 && parseInt(c.homeTeam.score) > parseInt(c.awayTeam.score)) ? `__` : ``} ${teamEmojis[c.homeTeam.teamTricode]} ${(c.gameStatus == 1) ? `(${c.homeTeam.wins}-${c.homeTeam.losses}) ` : ``}| ${c.gameStatusText}`;
+		let str2 = ``;
+		// Add countdown if game yet to start
+		if (c.gameStatus == 1) { 
+			if (c.gameDateTimeUTC) {
+				let msUntilStart = (new Date(c.gameDateTimeUTC).getTime() - new Date().getTime());
+				if (msUntilStart <= 0) {
+					str2 += `Starting at any moment`;
+				} else {
+					str2 += `Starting ${formatDuration(new Date(c.gameDateTimeUTC).getTime())}`;
+				}
+			} else if (c.gameTimeUTC) {
+				let msUntilStart = (new Date(c.gameTimeUTC).getTime() - new Date().getTime());
+				if (msUntilStart <= 0) {
+					str2 += `Starting at any moment`;
+				} else {
+					str2 += `Starting ${formatDuration(new Date(c.gameTimeUTC).getTime())}`;
+				}
+			}
+		} else str2 += `...`;
         
-        if (c.statusNum == 2) gamesStillOn++;
-
-        // Getting a more detailed team object from /cache/teams.json to use nickname
-        for (var j = 0; j < teams.league.standard.length; j++) {
-            if (teams.league.standard[j].tricode == c.hTeam.triCode) hTeam = teams.league.standard[j];
-            if (teams.league.standard[j].tricode == c.vTeam.triCode) vTeam = teams.league.standard[j];
-        }
-
-        if (!hTeam || !vTeam) { // Very unnecessary check
-            hTeam = {nickname: c.hTeam.triCode};
-            vTeam = {nickname: c.vTeam.triCode};
-        }
-
-        // let str1 = `${(c.statusNum == 1) ? `(${c.vTeam.win}-${c.vTeam.loss})` : ``} ${teamEmojis[c.vTeam.triCode]}${(c.statusNum == 3 && parseInt(c.vTeam.score) > parseInt(c.hTeam.score)) ? `__` : ``}${vTeam.nickname}${(c.statusNum == 3 && parseInt(c.vTeam.score) > parseInt(c.hTeam.score)) ? `__` : ``} ${c.vTeam.score} @ ${c.hTeam.score} ${(c.statusNum == 3 && parseInt(c.hTeam.score) > parseInt(c.vTeam.score)) ? `__` : ``}${hTeam.nickname}${(c.statusNum == 3 && parseInt(c.hTeam.score) > parseInt(c.vTeam.score)) ? `__` : ``} ${teamEmojis[c.hTeam.triCode]}${(c.statusNum == 1) ? `(${c.hTeam.win}-${c.hTeam.loss})` : ``}${(c.statusNum == 1) ? `` : ((c.statusNum == 2) ? `${(c.period.current > 4) ? ` | OT` : ` | Q`}${c.period.current} ${c.clock}` : ` | FINAL ${(c.period.current > 4) ? `${c.period.current - 4}OT` : ``}`)}`;
-        let str1 = `${(c.statusNum == 1) ? `(${c.vTeam.win}-${c.vTeam.loss})` : ``} ${teamEmojis[c.vTeam.triCode]} ${(c.statusNum == 3 && parseInt(c.vTeam.score) > parseInt(c.hTeam.score)) ? `__` : ``}${c.vTeam.triCode} ${c.vTeam.score}${(c.statusNum == 3 && parseInt(c.vTeam.score) > parseInt(c.hTeam.score)) ? `__` : ``} @ ${(c.statusNum == 3 && parseInt(c.hTeam.score) > parseInt(c.vTeam.score)) ? `__` : ``}${c.hTeam.score} ${c.hTeam.triCode}${(c.statusNum == 3 && parseInt(c.hTeam.score) > parseInt(c.vTeam.score)) ? `__` : ``} ${teamEmojis[c.hTeam.triCode]} ${(c.statusNum == 1) ? `(${c.hTeam.win}-${c.hTeam.loss})` : ``}${(c.statusNum == 1) ? `` : ((c.statusNum == 2) ? `${(c.period.current > 4) ? `| OT` : `| Q`}${c.period.current} ${c.clock}` : `| FINAL ${(c.period.current > 4) ? `${c.period.current - 4}OT` : ``}`)}`;
-        let str2 = `${(c.nugget.text) ? ((c.nugget.text != `` || c.nugget.text != ` `) ? `Summary: ${c.nugget.text}` : ((c.statusNum == 1) ? `` : `...`)) : ((c.statusNum == 1) ? `` : `...`)}`;
-
-        if (c.playoffs) str2 += `\n${c.playoffs.seriesSummaryText}`; // Playoffs series summary
-
-        if (c.statusNum == 1) { // Adding betting and countdown
-            str2 += (new Date(c.startTimeUTC).getTime() - new Date().getTime() <= 0) ? `\nStarting soon...` : `\nStarting ${formatDuration(new Date(c.startTimeUTC).getTime())}`;
-        }
-
         embed.addField(str1, str2);
+        embedsAdded++;
     }
 
     // Checking that today's finished games is in the database

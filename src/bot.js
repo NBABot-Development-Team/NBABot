@@ -338,6 +338,29 @@ client.on(`messageCreate`, async message => {
 					break;
 			}
 			break;
+
+		case `bot-stats`:
+			// @NBABot bot-stats yyyymmdd
+			let chosenDate;
+			if (!args[2] || !parseInt(args[2])) {
+				chosenDate = new Date().toISOString().substring(0, 10).split(`-`).join(``);
+			} else chosenDate = args[2];
+
+			let stats = await query(con, `SELECT * FROM stats WHERE Date = "${chosenDate}";`);
+			
+			if (!stats) return;
+			else if (stats.length == 0) return;
+
+			stats = stats[0];
+
+			let str = `__**${stats.Date}**__, Total: \`${stats.Total}\``;
+			statLoop: for (var key in stats) {
+				if ([`Date`, `Total`].includes(key)) continue statLoop;
+				str += `\n${key}: \`${stats[key]}\``;
+			}
+
+			return await message.channel.send(str);
+			break;
 		
 	}
 });
@@ -383,6 +406,45 @@ client.on(`interactionCreate`, async interaction => {
 				await query(con, `UPDATE users SET Guilds = "${guilds}" WHERE ID = "${interaction.user.id}";`);
 			}
 		}
+
+		let todayDate = new Date().toISOString().substring(0, 10).split(`-`).join(``);
+
+		// Add to stats
+		let currentStats = await query(con, `SELECT * FROM stats WHERE Date = "${todayDate}";`), currentStatsExists = true;
+		if (!currentStats) currentStatsExists = false;
+		else if (currentStats.length == 0) currentStatsExists = false;
+
+		if (!currentStatsExists) {
+			// Getting reference row
+			let ref = await query(con, `SELECT * FROM stats WHERE Date = "20221013";`);
+			ref = ref[0];
+			let extraStr = ``;
+
+			currentStats = { Date: todayDate, Total: 0 };
+			refLoop: for (var key in ref) {
+				if ([`Date`, `Total`].includes(key)) continue refLoop;
+				extraStr += `, 0`;
+				currentStats[key] = 0;
+			}
+
+			await query(con, `INSERT INTO stats VALUES ("${todayDate}", 0${extraStr});`);
+		} else currentStats = currentStats[0];
+
+		currentStats.Total++;
+
+		if (interaction.commandName.includes(`-`)) {
+			interaction.commandName = interaction.commandName.split(`-`).join(``);
+		}
+
+		if (currentStats[interaction.commandName]) {
+			currentStats[interaction.commandName]++;
+		} else {
+			await query(con, `ALTER TABLE stats ADD COLUMN ${interaction.commandName} MEDIUMINT;`);
+			await query(con, `UPDATE stats SET ${interaction.commandName} = 0 WHERE ${interaction.commandName} IS NULL;`);
+			currentStats[interaction.commandName] = 1;
+		}
+
+		await query(con, `UPDATE stats SET Total = ${currentStats.Total}, ${interaction.commandName} = ${currentStats[interaction.commandName]} WHERE Date = "${todayDate}";`);
 	}
 
 	let guild = await query(con, `SELECT * FROM guilds WHERE ID = "${interaction.guild.id}";`), guildExists = true;
@@ -486,6 +548,9 @@ setInterval(methods.updateDate, 1000 * 60 * 5);
 
 methods.updateScores();
 setInterval(methods.updateScores, 1000 * 20);
+
+methods.updateFutureScores()
+setInterval(methods.updateFutureScores, 1000 * 60 * 60);
 
 function updateActivity() {
 	delete require.cache[require.resolve(`./config.json`)];

@@ -37,10 +37,12 @@ client.on(`ready`, async () => {
     Scores();
     Transactions();
     News();
+    // Injuries();
 
     setInterval(Scores, 1000 * 60 * 20);
     setInterval(Transactions, 1000 * 60 * 5);
     setInterval(News, 1000 * 60 * 60);
+    // setInterval(Injuries, 1000 * 60 * 5);
 });
 
 // Every 5 minutes
@@ -373,6 +375,7 @@ async function Injuries() { // Not finished yets
 
     let b = await getJSON(`https://www.rotowire.com/basketball/tables/injury-report.php?team=ALL&pos=ALL`);
     let playersChecked = [];
+    let fields = [];
     for (var i = 0; i < b.length; i++) {
         // Get player's last injury
         let injury = await getValue(con, `injuries`, `Name`, b[i].player);
@@ -386,8 +389,6 @@ async function Injuries() { // Not finished yets
 
         playersChecked.push(current.player);
 
-        let fields = [];
-
         // Different scenarios: stayed the same, injury changed, status changed, both changed
         if (old.Injury == current.injury && old.Status != current.status) { // Different status
             fields.push([`${teamEmojis[current.team]} Changed status for ${current.player}${(current.player[current.player.length - 1] == `s`) ? `'` : `'s`} ${current.injury} injury`, `Before: ${old.Status}, Now: ${current.status}`]);
@@ -400,7 +401,7 @@ async function Injuries() { // Not finished yets
         }
 
         // Set current injury into database
-        await query(con, `UPDATE injuries SET Injury = '${current.injury}', Status = '${current.status}' WHERE Name = '${current.player}';`);
+        await query(con, `UPDATE injuries SET Injury = '${current.injury}', Status = '${current.status}' WHERE Name = "${current.player}";`);
     }
 
     let playersReturnedToNormal = 0;
@@ -408,7 +409,7 @@ async function Injuries() { // Not finished yets
     for (var i = 0; i < players.length; i++) {
         if (!playersChecked.includes(players[i].Name)) {
             playersReturnedToNormal++;
-            await query(con, `UPDATE injuries SET Injury = 'None', Status = 'None' WHERE Name = '${players[i].Name}';`);
+            await query(con, `UPDATE injuries SET Injury = 'None', Status = 'None' WHERE Name = "${players[i].Name}";`);
             // Add injury removed??
         }
     }
@@ -416,14 +417,19 @@ async function Injuries() { // Not finished yets
     console.log(`Injuries - fields: ${fields.length}, playersChecked: ${playersChecked}, returned: ${playersReturnedToNormal}`);
 
     let embed = new Discord.MessageEmbed()
-        .setTitle(`New injury updates:`)
+        .setTitle(`__New injury update${(fields.length > 1) ? `s`: ``}:__`)
         .setColor(teamColors.NBA)
         .setTimestamp()
         .setAuthor({ name: `NBABot (nbabot.js.org)`, iconURL: `https://cdn.discordapp.com/avatars/544017840760422417/2f4585b982abde74155ceaaa4c61d454.png?size=64`, url: `https://nbabot.js.org/` });
 
     for (var i = 0; i < fields.length; i++) {
-        
+        if (i > 24) continue;
+        embed.addField(fields[i][0], fields[i][1]);
     }
+
+    // Getting channel
+    let channel = await client.channels.fetch(config.injuriesChannel);
+    return await channel.send({ embeds: [embed] });
 } 
 
 client.login(config.token2);

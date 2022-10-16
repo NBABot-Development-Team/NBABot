@@ -16,6 +16,7 @@ const query = require(`../methods/database/query.js`);
 const teamEmojis = require(`../assets/teams/emojis.json`);
 const teamColors = require(`../assets/teams/colors.json`);
 const broadcasterEmojis = require(`../assets/broadcaster-emojis.json`);
+const { cursorTo } = require('readline');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -38,6 +39,7 @@ module.exports = {
 		// Deleting cached info and getting current date
 		delete require.cache[require.resolve(`../cache/today.json`)];
 		let currentDate = require(`../cache/today.json`).links.currentDate;
+		let currentDateObject = new Date(Date.UTC(currentDate.substring(0, 4), parseInt(currentDate.substring(4, 6)) - 1, currentDate.substring(6, 8)));
 		
 		let today = false;
 		if (!requestedDate) { // If no date is specified, find today's date
@@ -108,7 +110,7 @@ module.exports = {
 			let newDateObject = new Date(Date.UTC(date.substring(0, 4), parseInt(date.substring(4, 6)) - 1, date.substring(6, 8)));
 							
 			let embed = new Discord.MessageEmbed()
-				.setTitle(`${teamEmojis.NBA} NBA Scores for ${newDateObject.toDateString()}`)
+				.setTitle(`${teamEmojis.NBA} __NBA Scores for ${newDateObject.toDateString()}__`)
 				.setColor(teamColors.NBA);
 
 			// Yesterday/tomorrow dates
@@ -121,7 +123,7 @@ module.exports = {
 			const row = new Discord.MessageActionRow()
 				.addComponents(
 					new Discord.MessageButton()
-						.setCustomId(`${yesterdayDate}|${new Date().getTime()}`) // sets customId to date which button goes to
+						.setCustomId(yesterdayDate) // sets customId to date which button goes to
 						.setLabel(yesterdayDateObject.toDateString().substring(4, 10))
 						.setStyle(`PRIMARY`),
 
@@ -131,11 +133,10 @@ module.exports = {
 						.setStyle(`LINK`),
 
 					new Discord.MessageButton()
-						.setCustomId(`${tomorrowDate}|${new Date().getTime()}`)
+						.setCustomId(tomorrowDate)
 						.setLabel(tomorrowDateObject.toDateString().substring(4, 10))
 						.setStyle(`PRIMARY`),
 				);
-			
 
 			// Checking if the API reponse is valid
 			let numGames = 1;
@@ -144,14 +145,30 @@ module.exports = {
 			else if (json.games.length == 0) numGames = 0;
 
 			if (!numGames) {
-				embed.setDescription(`No games :frowning:`);
+				let noGameStr = `No games :frowning:`;
+				let o = newDateObject;
+				for (var i = 0; i < 10; i++) {
+					let n = new Date(o.getTime() + 86400000 * (i + 1)); // Adding day in milliseconds
+					if (n.getTime()	<= newDateObject.getTime()) continue;
+					let nDate = n.toISOString().substring(0, 10).split(`-`).join(``);
+					if (fs.existsSync(`./cache/${nDate}/scoreboard.json`)) {
+						let scoreboard = require(`../cache/${nDate}/scoreboard.json`);
+						if (!scoreboard) continue;
+						if (!scoreboard.games) continue;
+						if (scoreboard.games.length == 0) continue;
+						noGameStr += `\nThe next game${(scoreboard.games.length > 1) ? `s are` : ` is`} on **${n.toDateString()}**.`;
+						break;
+					} else continue;
+				}
+
+				embed.setDescription(noGameStr);
 				if (update) {
-					return await interaction.update({ embeds: [embed], components: [row] });	
-				} else return await interaction.reply({ embeds: [embed], components: [row] });
+					return await interaction.update({ embeds: [embed]/*, components: [row]*/ });	
+				} else return await interaction.reply({ embeds: [embed]/*, components: [row]*/ });
 			}
 
 			// Cycle through each game and add details to a field
-			let gamesFinished = 0;
+			let gamesFinished = 0, allGamesFinished = false;
 			let embedsAdded = 0;
 			gameLoop: for (var i = 0; i < json.games.length; i++) {
 				let c = json.games[i];
@@ -163,19 +180,18 @@ module.exports = {
 				if (c.gameStatus == 3) gamesFinished++; 
 				
 				let str1 = ``;
-				if (!today) {
-					if (c.broadcasters) {
-						if (c.broadcasters.nationalTvBroadcasters) {
-							if (c.broadcasters.nationalTvBroadcasters.length > 0) {
-								str1 += `${broadcasterEmojis[c.broadcasters.nationalTvBroadcasters[0].broadcasterAbbreviation]}  `;
-							}
+				if (c.broadcasters && c.gameStatus < 3) {
+					if (c.broadcasters.nationalTvBroadcasters) {
+						if (c.broadcasters.nationalTvBroadcasters.length > 0) {
+							str1 += `${broadcasterEmojis[c.broadcasters.nationalTvBroadcasters[0].broadcasterAbbreviation]}  `;
 						}
 					}
 				}
+
 				str1 += `${(c.gameStatus == 1) ? `(${c.awayTeam.wins}-${c.awayTeam.losses})` : ``} ${teamEmojis[c.awayTeam.teamTricode]} ${(c.gameStatus == 3 && parseInt(c.awayTeam.score) > parseInt(c.homeTeam.score)) ? `__` : ``}${c.awayTeam.teamTricode} ${c.awayTeam.score}${(c.gameStatus == 3 && parseInt(c.awayTeam.score) > parseInt(c.homeTeam.score)) ? `__` : ``} @ ${(c.gameStatus == 3 && parseInt(c.homeTeam.score) > parseInt(c.awayTeam.score)) ? `__` : ``}${c.homeTeam.score} ${c.homeTeam.teamTricode}${(c.gameStatus == 3 && parseInt(c.homeTeam.score) > parseInt(c.awayTeam.score)) ? `__` : ``} ${teamEmojis[c.homeTeam.teamTricode]} ${(c.gameStatus == 1) ? `(${c.homeTeam.wins}-${c.homeTeam.losses}) ` : ``}| ${c.gameStatusText}`;
 				let str2 = ``;
 				if (c.playoffs) str2 += `*${c.playoffs.seriesSummaryText}*\n`;
-
+9
 				// Add countdown if game yet to start
 				if (c.gameStatus == 1) { 
 					if (c.gameDateTimeUTC) {
@@ -234,15 +250,35 @@ module.exports = {
 				} */
 
 				if (!str2) str2 = `...`;
-				if (!str1 || !str2) {
-					console.log(str1);
-					console.log(str2);
-					continue;
-				}
-				
+				if (!str1 || !str2) continue;
+
+                if (c.gameLeaders && c.gameStatus == 3) {
+                    if (c.gameLeaders.homeLeaders && c.gameLeaders.awayLeaders) {
+                        if (str2 == `...`) {
+                            str2 = `${c.gameLeaders.awayLeaders.name}: \`${c.gameLeaders.awayLeaders.points}\`pts, \`${c.gameLeaders.awayLeaders.assists}\`ast \`${c.gameLeaders.awayLeaders.rebounds}\`reb\n${c.gameLeaders.homeLeaders.name}: \`${c.gameLeaders.homeLeaders.points}\`pts, \`${c.gameLeaders.homeLeaders.assists}\`ast \`${c.gameLeaders.homeLeaders.rebounds}\`reb`;
+                        } else {
+                            str2 += `${c.gameLeaders.awayLeaders.name}: \`${c.gameLeaders.awayLeaders.points}\`pts, \`${c.gameLeaders.awayLeaders.assists}\`ast \`${c.gameLeaders.awayLeaders.rebounds}\`reb\n${c.gameLeaders.homeLeaders.name}: \`${c.gameLeaders.homeLeaders.points}\`pts, \`${c.gameLeaders.homeLeaders.assists}\`ast \`${c.gameLeaders.homeLeaders.rebounds}\`reb`;
+                        }
+                    }
+                } else if (c.pointsLeaders && c.gameStatus == 3) {
+					if (c.pointsLeaders.length > 0) {
+						let str3 = ``;
+						for (var j = 0; j < c.pointsLeaders.length; j++) {
+							str3 += `${c.pointsLeaders[j].firstName} ${c.pointsLeaders[j].lastName}: \`${parseInt(c.pointsLeaders[j].points)}\`pts\n`;
+						}
+						if (str2 == `...`) {
+							str2 = str3;
+						} else {
+							str2 += str3;
+						}
+					}
+                }
+
 				embed.addField(str1, str2);
 				embedsAdded++;
 			}
+			
+			if (json.games.length == gamesFinished) allGamesFinished = true;
 
 			if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });
 
@@ -251,26 +287,58 @@ module.exports = {
 				let user = await query(con, `SELECT * FROM users WHERE ID = "${interaction.user.id}"`);
 				user = user[0];
 				if (user.Betting == "y" || !betting) {
-					embed.setFooter({ text: `See today's simulated betting odds with /odds. Your balance: $${user.Balance.toFixed(2)}.`});
+					let odds;
+					if (fs.existsSync(`./cache/${date}/`)) {
+						if (fs.existsSync(`./cache/${date}/odds.json`)) {
+							delete require.cache[require.resolve(`../cache/${date}/odds.json`)];
+							odds = require(`../cache/${date}/odds.json`);
+						}
+					}
+
+					if (odds && (dateObject.getTime() > currentDateObject.getTime() || date == currentDate)) { // Odds file available
+						let gamesAvailable = 0;
+						for (var i = 0; i < json.games.length; i++) {
+							if (odds[`${json.games[i].awayTeam.teamTricode} @ ${json.games[i].homeTeam.teamTricode}`]) {
+								let game = odds[`${json.games[i].awayTeam.teamTricode} @ ${json.games[i].homeTeam.teamTricode}`];
+								if (game.awayTeamOdds?.moneyLine && game.homeTeamOdds?.moneyLine) {
+									gamesAvailable++;
+								}
+							}
+						}
+
+						if (gamesAvailable == json.games.length && !allGamesFinished) { // All available
+							embed.setFooter({ text: `All of this date's simulated betting odds are available with /odds. Your balance: $${user.Balance.toFixed(2)}`});
+						} else if (gamesAvailable < json.games.length) {
+							embed.setFooter({ text: `${gamesAvailable}/${json.games.length} of today's simulated betting odds are available with /odds. Your balance: $${user.Balance.toFixed(2)}`});
+						} else if (gamesAvailable > json.games.length) {
+							embed.setFooter({ text: `All of this date's simulated betting odds are available with /odds. Your balance: $${user.Balance.toFixed(2)}`});
+						} else {
+							embed.setFooter({ text: `Odds are not yet available for this date. Your balance: $${user.Balance.toFixed(2)}`});
+						}
+					} else if (dateObject.getTime() > currentDateObject.getTime() || date == currentDate) { // Odds file not available – so no odds available
+						embed.setFooter({ text: `Odds are not yet available for this date. Your balance: $${user.Balance.toFixed(2)}`});
+					}
 				}
 			}
+
+			let sendObject = (interactionSource.user.id == `401649168948396032`) ? { embeds: [embed], components: [row] } : { embeds: [embed] }; 
 
 			if (update) {
 				if (requestedDate) {
 					if (embedsAdded == 0) {
 						await interaction.update(`\`${requestedTeam}\` did not play on ${newDateObject.toDateString()}.`);
 					} else {
-						await interaction.update({ embeds: [embed] });
+						await interaction.update(sendObject);
 					}
-				} else await interaction.update({ embeds: [embed], components: [row] });
+				} else await interaction.update(sendObject);
 			} else {
 				if (requestedDate) {
 					if (embedsAdded == 0) {
 						await interaction.reply(`\`${requestedTeam}\` did not play on ${newDateObject.toDateString()}.`);
 					} else {
-						await interaction.reply({ embeds: [embed] });
+						await interaction.reply(sendObject);
 					}
-				} else await interaction.reply({ embeds: [embed], components: [row] });
+				} else await interaction.reply(sendObject);
 			}
 		}
 

@@ -157,19 +157,25 @@ module.exports = {
 				json = dates[i];
 			}
 		}
-		let json2 = await getJSON(`https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json`);
-		json2 = json2.scoreboard;
-		let gamesMatching = 0;
-		jsonLoop: for (var i = 0; i < json.games.length; i++) {
-			for (var j = 0; j < json2.games.length; j++) {
-				if (json.games[i].gameId == json2.games[j].gameId) {
-					gamesMatching++;
-					continue jsonLoop;
+
+		if (!json.games) {
+			json = {games: []};
+		} else {
+			let json2 = await getJSON(`https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json`);
+			json2 = json2.scoreboard;
+			let gamesMatching = 0;
+			jsonLoop: for (var i = 0; i < json.games.length; i++) {
+				for (var j = 0; j < json2.games.length; j++) {
+					if (json.games[i].gameId == json2.games[j].gameId) {
+						gamesMatching++;
+						json2.games[j].broadcasters = json.games[i].broadcasters;
+						continue jsonLoop;
+					}
 				}
 			}
-		}
-		if (gamesMatching == json.games.length && gamesMatching == json2.games.length) {
-			json = json2;
+			if (gamesMatching == json.games.length && gamesMatching == json2.games.length) {
+				json = json2;
+			}
 		}
 		/*
 		let json = await getJSON(`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json`);
@@ -249,6 +255,30 @@ module.exports = {
 				}
 			}
 		});
+	},
+
+	async updateFutureScores() {
+		// Getting currentDate
+		delete require.cache[require.resolve(`../cache/today.json`)];
+		let currentDate = require(`../cache/today.json`).links.currentDate;
+		let currentDateObject = new Date(currentDate.substring(0, 4), parseInt(currentDate.substring(4, 6)) - 1, currentDate.substring(6, 8));
+
+		let json = await getJSON(`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json`);
+		let dates = json.leagueSchedule.gameDates;
+		let counter = 0;
+		for (var i = 0; i < dates.length; i++) {
+			if (counter > 10) break;
+			let d = new Date(dates[i].gameDate); /*.toISOString().substring(0, 10).split(`-`).join(``); */
+			if (currentDateObject.getTime() >= d.getTime()) continue;
+			else {
+				counter++;
+				d = d.toISOString().substring(0, 10).split(`-`).join(``); 
+				if (!fs.existsSync(`./cache/${d}/`)) fs.mkdir(`./cache/${d}/`, err => { if (err) throw err; });
+				fs.writeFile(`./cache/${d}/scoreboard.json`, JSON.stringify(dates[i]), async err => {
+					if (err) throw err;
+				});
+			}
+		}
 	},
 
 	async cleanUpBetsColumns(con) {

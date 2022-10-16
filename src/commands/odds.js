@@ -55,7 +55,18 @@ module.exports = {
         // Getting the date's scoreboard
         let json;
         if (today) json = require(`../cache/${requestedDate}/scoreboard.json`);
-        else json = await getJSON(`http://data.nba.net/10s/prod/v1/${requestedDate}/scoreboard.json`);  
+        else {
+            json = await getJSON(`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json`);
+
+            let dates = json.leagueSchedule.gameDates;
+            for (var i = 0; i < dates.length; i++) {
+                let d = new Date(dates[i].gameDate);
+                d = d.toISOString().substring(0, 10).split(`-`).join(``);
+                if (d == requestedDate) {
+                    json = dates[i];
+                }
+            }  
+        }
         
         let embed = new Discord.MessageEmbed()
             .setTitle(`Odds for ${dateObject.toDateString()}`)

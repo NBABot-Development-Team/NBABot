@@ -149,7 +149,7 @@ module.exports = {
 				let o = newDateObject;
 				for (var i = 0; i < 10; i++) {
 					let n = new Date(o.getTime() + 86400000 * (i + 1)); // Adding day in milliseconds
-					if (n.getTime()	<= newDateObject.getTime()) continue;
+					if (n.getTime()	<= newDateObject.getTime()) continue; //
 					let nDate = n.toISOString().substring(0, 10).split(`-`).join(``);
 					if (fs.existsSync(`./cache/${nDate}/scoreboard.json`)) {
 						let scoreboard = require(`../cache/${nDate}/scoreboard.json`);

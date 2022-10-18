@@ -97,14 +97,14 @@ module.exports = {
                 if (player.collegeName == "" || player.collegeName == " ") player.collegeName = "Unlisted";
                 if (!player.jersey) player.jersey = "Not Specified";
 
-                embed.addField(`Jersey Number`, player.jersey, true)
-                    .addField(`Position`, player.pos, true)
+                embed.addField(`Jersey Number`, (player.jersey) ? player.jersey : `Unknown`, true)
+                    .addField(`Position`, (player.pos) ? player.pos : `Unknown`, true)
                     .addField(`Height`, `${player.heightFeet}'${player.heightInches}"/${player.heightMeters}m`, true)
                     .addField(`Weight`, `${player.weightPounds}lbs/${player.weightKilograms}kg`, true)
                     .addField(`Date of Birth`, new Date(player.dateOfBirthUTC).toDateString(), true)
                     .addField(`Drafted`, draftStr, true)
                     .addField(`NBA Debut Year`, (player.nbaDebutYear) ? player.nbaDebutYear : `Unknown`, true)
-                    .addField(`Country`, player.country, true)
+                    .addField(`Country`, (player.country) ? player.country : `Unknown`, true)
                     .setColor(teamColors[teamNames[player.teamId]]);
 
                 // Checking for injuries as well

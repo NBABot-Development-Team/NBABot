@@ -317,7 +317,7 @@ client.on(`messageCreate`, async message => {
 				case `borrect`:
 				case `wrong`:
 					await query(con, `UPDATE users SET ${args[3]} = ${args[4]} WHERE ID = "${args[2]}";`);
-					return await message.channel.send(`UPDATED users SET \`${args[3]}]\` = \`${args[4]}\` WHERE ID = "\`${args[2]}\`";`);
+					return await message.channel.send(`UPDATED users SET \`${args[3]}\` = \`${args[4]}\` WHERE ID = "\`${args[2]}\`";`);
 					break;
 
 				case `favouriteteam`: // string

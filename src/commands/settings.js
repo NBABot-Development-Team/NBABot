@@ -48,12 +48,12 @@ module.exports = {
             subcommand
                 .setName(`ads`)
                 .setDescription(`(Donator only) Choose to have ads or not.`)
-                .addStringOption(option => option.setName(`choice`).setDescription(`Yes for ads, No for no ads`).addChoices({
-                    name: `Yes`,
-                    value: `yes`
+                .addStringOption(option => option.setName(`choice`).setDescription(`On for ads, Off for no ads`).addChoices({
+                    name: `On`,
+                    value: `on`
                 }).addChoices({
-                    name: `No`,
-                    value: `no`
+                    name: `Off`,
+                    value: `off`
                 }).setRequired(true)))
         .addSubcommand(subcommand => 
             subcommand
@@ -132,7 +132,7 @@ module.exports = {
                 if (user.Donator != `y` && user.Donator != `f`) return await interaction.reply(`Only donators can choose whether they want ads or not. Learn more with \`/donate\`.`);
 
                 let choice = interaction.options.getString(`choice`);
-                await query(con, `UPDATE users SET Ads = "${(choice == `yes`) ? `y` : `n`}" WHERE ID = "${interaction.user.id}";`);
+                await query(con, `UPDATE users SET Ads = "${(choice == `yes` || choice == `on`) ? `y` : `n`}" WHERE ID = "${interaction.user.id}";`);
 
                 embed = new Discord.MessageEmbed()
                     .setColor(teamColors.NBA)

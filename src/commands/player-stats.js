@@ -109,11 +109,13 @@ module.exports = {
             if (season < 2016) allowedToGetFromNBA = false;
         }
 
+        /*
         if (ids.nba[requestedName.toLowerCase()] && !found && allowedToGetFromNBA) {
             possible.nba[ids.nba[requestedName.toLowerCase()]] = requestedName.length;
             if (!season) season = lastPlayed.nba[ids.nba[requestedName.toLowerCase()]];
             found = true;
         }
+        */
 
         if (!found) {
             if (ids.bdl[requestedName.toLowerCase()]) {
@@ -126,6 +128,7 @@ module.exports = {
         if (!found) {
             // Now doing full search
             sourceLoop: for (var key in possible) {
+                if (key == `nba`) continue sourceLoop;
                 nameLoop: for (var name in ids[key]) {
                     if (namesAlreadyPushed.includes(name)) continue nameLoop;
                     let names = name.split(` `);
@@ -168,7 +171,7 @@ module.exports = {
 
                 for (var key in possible) {
                     if (Object.keys(possible[key]).length > 0) {
-                        let str1 = (key == `nba`) ? `Possible players since 2016-17:` : `Possible players before 2016-17:`;
+                        let str1 = (key == `nba`) ? `Possible players since 2016-17:` : `Possible players:`;
                         let str2 = ``;
                         for (var i = 0; i < Object.keys(possible[key]).length; i++) {
                             str2 += `\`${names[key][Object.keys(possible[key])[i]]}\` `;

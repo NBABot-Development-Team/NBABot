@@ -35,11 +35,24 @@ module.exports = {
         delete require.cache[require.resolve(`../cache/today.json`)];
         let today = require(`../cache/today.json`);
         
-        let json = await getJSON(`http://data.nba.net/10s/prod/v1/${today.seasonScheduleYear}/teams/${teamID}/schedule.json`);
+        // let json = await getJSON(`http://data.nba.net/10s/prod/v1/${today.seasonScheduleYear}/teams/${teamID}/schedule.json`);
+        let json = await getJSON(`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json`);
+        json = json.leagueSchedule.gameDates;
+        let newJson = {league: {standard: []}};
+        dateLoop: for (var i = 0; i < json.length; i++) {
+            gameLoop: for (var j = 0; j < json[i].games.length; j++) {
+                if ([json[i].games[j].awayTeam.teamTricode, json[i].games[j].homeTeam.teamTricode].includes(team)) {
+                    json[i].games[j].currentDate = json[i].gameDate;
+                    newJson.league.standard.push(json[i].games[j]);
+                    break gameLoop;
+                }
+            }
+        }
+        json = newJson;
 
         let nextGamePosition;
         gameLoop: for (var i = json.league.standard.length - 1; i > 0; i--) {
-            if (json.league.standard[i].statusNum != 1) {
+            if (json.league.standard[i].gameStatus != 1) {
                 nextGamePosition = i + 1;
                 break gameLoop;
             }
@@ -51,7 +64,7 @@ module.exports = {
         let nextGame = json.league.standard[nextGamePosition];
         if (!nextGame) return await interaction.reply(`\`${team}\` has no more games to play for this season.`);
         let months = [`January`, `February`, `March`, `April`, `May`, `June`, `July`, `August`, `September`, `October`, `November`, `December`];
-        let nextGameDate = new Date(new Date(nextGame.startTimeUTC).getTime() - 1000 * 60 * 60 * 5);
+        let nextGameDate = new Date(nextGame.gameDateTimeUTC);
         let currentMonth = nextGameDate.getMonth();
         let currentYear = nextGameDate.getFullYear();
 
@@ -60,23 +73,23 @@ module.exports = {
             let description = ``;
             for (var i = 0; i < json.league.standard.length; i++) {
                 let game = json.league.standard[i];
-                let currentDate = new Date(new Date(game.startTimeUTC).getTime() - 1000 * 60 * 60 * 5);
+                let currentDate = new Date(json.league.standard[i].currentDate);
                 if (selectedMonth == currentDate.getMonth()) {
                     description += `${formatNumber(currentDate.getDate())}: `;
-                    description += (game.isHomeTeam) ? `\`v ${teamNames[game.vTeam.teamId]}\` ${teamEmojis[teamNames[game.vTeam.teamId]]}` : `\`@ ${teamNames[game.hTeam.teamId]}\` ${teamEmojis[teamNames[game.hTeam.teamId]]}`;
+                    description += (team == game.homeTeam.teamTricode) ? `\`v ${teamNames[game.awayTeam.teamId]}\` ${teamEmojis[teamNames[game.awayTeam.teamId]]}` : `\`@ ${teamNames[game.homeTeam.teamId]}\` ${teamEmojis[teamNames[game.homeTeam.teamId]]}`;
                     description += ` : `;
 
-                    switch (game.statusNum) {
+                    switch (game.gameStatus) {
                         case 1:
-                            description += (game.startTimeEastern) ? game.startTimeEastern : `TBD`;
+                            description += (game.gameDateTimeUTC) ? `${new Date(game.gameDateTimeEst).toTimeString().substring(0, 5)} ET` : `TBD`;
                             break;
 
                         case 2:
-                            description += `${team} ${(game.isHomeTeam) ? `${game.hTeam.score} - ${game.vTeam.score}` : `${game.vTeam.score} - ${game.hTeam.score}`} LIVE`;
+                            description += `${team} ${(team == game.homeTeam.teamTricode) ? `${game.homeTeam.score} - ${game.awayTeam.score}` : `${game.awayTeam.score} - ${game.homeTeam.score}`} LIVE`;
                             break;
 
                         case 3:
-                            description += `${team} ${(game.isHomeTeam) ? `${game.hTeam.score} - ${game.vTeam.score}` : `${game.vTeam.score} - ${game.hTeam.score}`} FINAL`;
+                            description += `${team} ${(team == game.homeTeam.teamTricode) ? `${game.homeTeam.score} - ${game.awayTeam.score}` : `${game.awayTeam.score} - ${game.homeTeam.score}`} FINAL`;
                             break;
                     }
                     description += `\n`;

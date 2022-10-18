@@ -5,6 +5,8 @@ const fs = require(`fs`);
 
 // Assets
 const generalEmojis = require(`../assets/emojis.json`);
+const teamEmojis = require(`../assets/teams/emojis.json`);
+const teamColors = require(`../assets/teams/colors.json`);
 
 // Methods
 const formatTeam = require(`../methods/format-team.js`);
@@ -168,10 +170,58 @@ module.exports = {
         let embed = new Discord.MessageEmbed()
             .setTitle(`${generalEmojis.success} Bet successfully placed.`)
             .setColor(0x5CB85C)
-            .addField(`Details:`, `**Game:** ${teams.join(` @ `)} on ${new Date(date.substring(0, 4), parseInt(date.substring(4, 6)) - 1, parseInt(date.substring(6, 8))).toDateString()}\n**Team**: ${team}\n**Amount placed**: $${amount}\n**Possible payout**: $${payout}`);
+            .addField(`Details:`, `**Game:** ${teams.join(` @ `)} on ${new Date(date.substring(0, 4), parseInt(date.substring(4, 6)) - 1, parseInt(date.substring(6, 8))).toDateString()}\n**Team**: ${team}\n**Amount placed**: $${parseInt(amount).toFixed(2)}\n**Possible payout**: $${parseInt(payout).toFixed(2)}`);
 
         if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });
         if (replacedBet) embed.setFooter({ text: `Note: Your previous bet of $${replacedBet[1]} on ${replacedBet[0]} was automatically replaced.` });
+
+        // Getting all current bets and DMing user with it
+        let bets = await query(con, `SELECT * FROM bets WHERE ID = "${interaction.user.id}";`);
+        let betsValid = true;
+        if (!bets) betsValid = false;
+        else if (bets.length == 0) betsValid = false;
+        
+        bets = bets[0];
+
+        let embed2 = new Discord.MessageEmbed()
+            .setTitle(`Bets placed for user ${interaction.user.tag}:`)
+            .setColor(teamColors.NBA);
+
+        let fields = 0;
+        for (var key in bets) {
+            if (key == `ID`) continue;
+            if (!bets[key]) continue;
+            
+            let date = key.split(`d`).join(``);
+            let date2 = `${date.substring(4, 6)}/${date.substring(6, 8)}/${date.substring(0, 4)}`;
+            date = new Date(date.substring(0, 4), parseInt(date.substring(4, 6)) - 1, date.substring(6, 8));
+
+            let str1 = `__${date.toDateString()} (${date2}):__`;
+            let str2 = ``;
+
+            // e.g. OKC|10|29.30
+
+            let totalPlaced = 0, totalPayout = 0;
+            for (var i = 0; i < bets[key].split(`,`).length; i++) {
+                let details = bets[key].split(`,`)[i].split(`|`);
+                str2 += `\`$${parseFloat(details[1]).toFixed(2)}\` on ${teamEmojis[details[0]]} (payout: \`$${parseFloat(details[2]).toFixed(2)}\`)\n`;
+                totalPlaced += parseFloat(details[1]);
+                totalPayout += parseFloat(details[2]);
+            }
+            
+            if (bets[key].split(`,`).length > 1) {
+                str2 += `Total placed: \`$${totalPlaced.toFixed(2)}\`, Total payout: \`$${totalPayout.toFixed(2)}\`.`
+            }
+
+            fields++;
+            embed2.addField(str1, str2);
+        }
+
+        try {
+            await interaction.user.send({ embeds: [embed2] });
+        } catch (e) {
+            console.log(e);
+        }
 
         return await interaction.reply({ embeds: [embed] });
 	},

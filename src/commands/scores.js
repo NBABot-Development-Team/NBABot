@@ -162,6 +162,7 @@ module.exports = {
 				}
 
 				embed.setDescription(noGameStr);
+				if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });
 				if (update) {
 					return await interaction.update({ embeds: [embed]/*, components: [row]*/ });	
 				} else return await interaction.reply({ embeds: [embed]/*, components: [row]*/ });

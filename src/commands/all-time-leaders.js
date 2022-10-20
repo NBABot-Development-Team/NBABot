@@ -65,6 +65,8 @@ module.exports = {
 
 		let stat = interaction.options.getString(`stat`);
 
+        await interaction.deferReply();
+
         fetch(`https://stats.nba.com/stats/alltimeleadersgrids?LeagueID=00&PerMode=Totals&SeasonType=Regular+Season&TopX=20`, {
             headers: require(`../config.json`).headers
         }).then(async res => {
@@ -88,7 +90,7 @@ module.exports = {
 
                     if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });
 
-                    return await interaction.reply({ embeds: [embed] });
+                    return await interaction.editReply({ embeds: [embed] });
                 }
             }
         })

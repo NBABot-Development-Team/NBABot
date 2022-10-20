@@ -93,6 +93,8 @@ module.exports = {
             if (!season) return await interaction.reply(`Please use a valid season, e.g. 2018-2019, 2018-19, or 2018.`);
         }
         if (!seasonType) seasonType = `Regular+Season`;
+
+        await interaction.deferReply();
         
         fetch(`https://stats.nba.com/stats/leagueleaders?ActiveFlag=&LeagueID=00&PerMode=${mode}&Scope=S&Season=${season}-${(parseInt(season) + 1).toString().substring(2, 4)}&SeasonType=${seasonType}&StatCategory=${stat}`, {
             headers: require(`../config.json`).headers
@@ -115,7 +117,7 @@ module.exports = {
                     statPosition = i;
                 }
             }
-            if (!statPosition) return await interaction.reply(`An error occurred finding that stat.`);
+            if (!statPosition) return await interaction.editReply(`An error occurred finding that stat.`);
 
             for (var i = 0; i < max; i++) {
                 description += `${i + 1}) \`${leaders[i][statPosition]}\` - **${leaders[i][2]}** ${teamEmojis[leaders[i][3]]}\n`
@@ -125,7 +127,7 @@ module.exports = {
 
             if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });
 
-            return await interaction.reply({ embeds: [embed] });
+            return await interaction.editReply({ embeds: [embed] });
         });
 	},
 };

@@ -132,7 +132,7 @@ module.exports = {
                 if (parseFloat(team.stats[g]) - Math.floor(parseFloat(team.stats[g])) == 0) team.stats[g] = `${team.stats[g]}.0`;
 
                 if (team.stats[s] == `-`) team.stats[s] = `- `;
-                description += `\`${(i + 1 < 10) ? `0${i + 1}` : i + 1}) \`${teamEmojis[team.team.abbrev]}\`${team.team.abbrev} | ${record} ${percentage} ${(parseFloat(team.stats[g]) < 10) ? `0${parseFloat(team.stats[g])}` : parseFloat(team.stats[g])}  ${team.stats[s]}\`\n`;
+                description += `\`${(i + 1 < 10) ? `0${i + 1}` : i + 1}) \`${teamEmojis[team.team.abbrev]}\`${team.team.abbrev} | ${record} ${percentage} ${(parseFloat(team.stats[g]) < 10) ? `0${parseFloat(team.stats[g]).toFixed(1)}` : parseFloat(team.stats[g]).toFixed(1)}  ${team.stats[s]}\`\n`;
             }
 
             embed.addField(`${json[k].name} Standings:`, description);

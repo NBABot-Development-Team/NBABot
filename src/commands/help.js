@@ -14,9 +14,9 @@ module.exports = {
 		let { interaction, ad } = variables;
 
 		const commands = {
-			nba: [`scores`, `boxscore`, `player-stats`, `player-info`, `compare-players`, `standings`, `schedule`, `roster`, `team-info`, `teams`, `news`, `transactions`],
-			betting: [`bet`, `bets`, `balance`, `bets`, `claim`, `leaderboard`, `odds`, `rbet`, `reset-balance`],
-			other: [`bot-stats`, `help`, `img-add`, `img-delete`, `img`, `imgs`, `ping`, `settings`, `vote`],
+			nba: [`scores`, `boxscore`, `player-stats`, `player-info`, `compare-players`, `standings`, `schedule`, `roster`, `team-info`, `teams`, `news`, `transactions`, `all-time-leaders`, `league-leaders`, `franchise-leaders`],
+			betting: [`bet`, `bets`, `balance`, `bets`, `claim`, `leaderboard`, `odds`, `rbet`, `reset-balance`, `weekly`],
+			other: [`bot-stats`, `help`, `img-add`, `img-delete`, `img`, `imgs`, `ping`, `settings`, `vote`, `auto-scores`, `donate`, `ad-free-servers`],
 		}
 
 		let embed = new Discord.MessageEmbed()
@@ -26,7 +26,7 @@ module.exports = {
 			.addField(`NBA Commands`, `\`/${commands.nba.join(`\` \`/`)}\``)
 			.addField(`Betting Commands`, `\`/${commands.betting.join(`\` \`/`)}\``)
 			.addField(`Other Commands`, `\`/${commands.other.join(`\` \`/`)}\``)
-			.setFooter(`NBABot, made by chig#4519 and freejstn#0666`);
+			.setFooter({ text: `NBABot, made by chig#4519 and freejstn#0666` });
 
 		const row = new Discord.MessageActionRow()
 			.addComponents(

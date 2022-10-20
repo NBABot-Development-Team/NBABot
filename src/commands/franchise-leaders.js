@@ -25,11 +25,17 @@ module.exports = {
         team = formatTeam(team);
         if (!team) return await interaction.reply(`Please use a valid team. Use \`/teams\` to see all of them.`);
 
+        await interaction.deferReply();
+
         fetch(`https://stats.nba.com/stats/franchiseleaders?LeagueID=&TeamID=${teamIDs[team]}`, {
             headers: require(`../config.json`).headers
         }).then(async res => {
             let json = await res.text();
-            json = JSON.parse(json);
+            try {
+                json = JSON.parse(json);
+            } catch (e) {
+                return await interaction.editReply(`\`${interaction.options.getString(`team`)}\` is not a valid team. Use \`/teams\` to find this out.`)
+            }
             json = json.resultSets[0];
 
             let embed = new Discord.MessageEmbed()
@@ -45,7 +51,7 @@ module.exports = {
 
             if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });
 
-            return await interaction.reply({ embeds: [embed] });
+            return await interaction.editReply({ embeds: [embed] });
         });
 	},
 };

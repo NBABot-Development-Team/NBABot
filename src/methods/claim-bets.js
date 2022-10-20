@@ -1,5 +1,6 @@
 // Libraries
 const Discord = require(`discord.js`);
+const fs = require(`fs`);
 
 // Assets
 const teamEmojis = require(`../assets/teams/emojis.json`);
@@ -17,13 +18,26 @@ module.exports = async (date, userSpecified, teamSpecified) => {
 
             let betsClaimed = 0;
 
-            let json = await getJSON(`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json`);
-            let dates = json.leagueSchedule.gameDates;
-            for (var i = 0; i < dates.length; i++) {
-                let d = new Date(dates[i].gameDate);
-                d = d.toISOString().substring(0, 10).split(`-`).join(``);
-                if (d == date) {
-                    json = dates[i];
+            delete require.cache[require.resolve(`../cache/today.json`)];
+            let currentDate = require(`../cache/today.json`).links.currentDate;
+
+            let json;
+            if (date == currentDate) {
+                // Can get cache
+                json = require(`../cache/${date}/scoreboard.json`);
+            } else {
+                if (fs.existsSync(`./cache/${date}/scoreboard.json`)) {
+                    json = require(`../cache/${date}/scoreboard.json`);
+                } else {
+                    json = await getJSON(`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json`);
+                    let dates = json.leagueSchedule.gameDates;
+                    for (var i = 0; i < dates.length; i++) {
+                        let d = new Date(dates[i].gameDate);
+                        d = d.toISOString().substring(0, 10).split(`-`).join(``);
+                        if (d == date) {
+                            json = dates[i];
+                        }
+                    }
                 }
             }
 

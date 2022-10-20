@@ -11,6 +11,7 @@
     "discord.js": "^13.8.1",
     "express": "^4.17.3",
     "http": "^0.0.1-security",
+    "moment-timezone": "^0.5.38",
     "mysql": "^2.18.1",
     "node-fetch": "^2.6.5",
     "path": "^0.12.7",

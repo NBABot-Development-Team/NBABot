@@ -65,8 +65,12 @@ module.exports = {
 		let position = await query(con, `SELECT * FROM ( SELECT ID, Balance, Correct, Wrong, Guilds, @row := @row + 1 AS serial_num FROM ${(global) ? `users` : `(SELECT * FROM users WHERE LOCATE("${interaction.guild.id}", Guilds) > 1 ) temp2`} CROSS JOIN (SELECT @row := 0) r ORDER BY Balance DESC ) tmp WHERE ID = "${interaction.user.id}";`);
 		position = position[0];
 
-		if (position.serial_num > 10) {
-			embed.addField(`...\n${position.serial_num}) @${interaction.user.username} - \`$${position.Balance.toFixed(2).toString()}\``, `_Betting record:_ \`${position.Correct} - ${position.Wrong}\` (${convertToPercentage(position.Correct, position.Correct + position.Wrong)})`);
+		if (position) {
+			if (position.serial_num > 10) {
+				embed.addField(`...\n${position.serial_num}) @${interaction.user.username} - \`$${position.Balance.toFixed(2).toString()}\``, `_Betting record:_ \`${position.Correct} - ${position.Wrong}\` (${convertToPercentage(position.Correct, position.Correct + position.Wrong)})`);
+			}
+		} else {
+			embed.setFooter({ text: `Note: Your position in the leaderboard could not be found for some reason.` });
 		}
 
 		if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });

@@ -300,6 +300,10 @@ client.on(`messageCreate`, async message => {
 			break;
 
 		case `bet-stats`:
+			if (!args[2]) {
+				delete require.cache[require.resolve(`./cache/today.json`)];
+				args[2] = require(`./cache/today.json`).links.currentDate;
+			}
 			let activeBetCount = await query(con, `SELECT COUNT(*) FROM bets WHERE d${args[2]} IS NOT NULL;`);
 			activeBetCount = activeBetCount[0][`COUNT(*)`];
 			return await message.channel.send(`${args[2]}: \`${activeBetCount}\``);
@@ -343,7 +347,8 @@ client.on(`messageCreate`, async message => {
 			// @NBABot bot-stats yyyymmdd
 			let chosenDate;
 			if (!args[2] || !parseInt(args[2])) {
-				chosenDate = new Date().toISOString().substring(0, 10).split(`-`).join(``);
+				delete require.cache[require.resolve(`./cache/today.json`)];
+				chosenDate = require(`./cache/today.json`).links.currentDate;
 			} else chosenDate = args[2];
 
 			let stats = await query(con, `SELECT * FROM stats WHERE Date = "${chosenDate}";`);
@@ -377,7 +382,6 @@ client.on(`interactionCreate`, async interaction => {
 	// Logging command contents
 	let offset = 12; // Converts logging stuff to NZ time, feel free to change this utc offset
 	let localTime = new Date(new Date().getTime() + offset * 60 * 60 * 1000);
-	console.log(`[${localTime.toISOString()}][${interaction.guild.id}][${interaction.user.id}]: ${interaction.commandName}`);
 
 	if (runDatabase) {
 		// Registering user on users database if not already
@@ -407,7 +411,8 @@ client.on(`interactionCreate`, async interaction => {
 			}
 		}
 
-		let todayDate = new Date().toISOString().substring(0, 10).split(`-`).join(``);
+		delete require.cache[require.resolve(`./cache/today.json`)];
+		let todayDate = require(`./cache/today.json`).links.currentDate;
 
 		// Add to stats
 		let currentStats = await query(con, `SELECT * FROM stats WHERE Date = "${todayDate}";`), currentStatsExists = true;
@@ -432,6 +437,8 @@ client.on(`interactionCreate`, async interaction => {
 
 		currentStats.Total++;
 
+		console.log(`[${currentStats.Total}][${localTime.toISOString()}][${interaction.guild.id}][${interaction.user.id}]: ${interaction.commandName}`);
+
 		if (interaction.commandName.includes(`-`)) {
 			interaction.commandName = interaction.commandName.split(`-`).join(``);
 		}
@@ -445,7 +452,7 @@ client.on(`interactionCreate`, async interaction => {
 		}
 
 		await query(con, `UPDATE stats SET Total = ${currentStats.Total}, ${interaction.commandName} = ${currentStats[interaction.commandName]} WHERE Date = "${todayDate}";`);
-	}
+	} else console.log(`[${localTime.toISOString()}][${interaction.guild.id}][${interaction.user.id}]: ${interaction.commandName}`);
 
 	let guild = await query(con, `SELECT * FROM guilds WHERE ID = "${interaction.guild.id}";`), guildExists = true;
 	if (!guild) guildExists = false;
@@ -549,8 +556,11 @@ setInterval(methods.updateDate, 1000 * 60 * 5);
 methods.updateScores();
 setInterval(methods.updateScores, 1000 * 20);
 
-methods.updateFutureScores()
+methods.updateFutureScores();
 setInterval(methods.updateFutureScores, 1000 * 60 * 60);
+
+methods.updateOddsNew();
+setInterval(methods.updateOddsNew, 1000 * 60 * 30);
 
 function updateActivity() {
 	delete require.cache[require.resolve(`./config.json`)];

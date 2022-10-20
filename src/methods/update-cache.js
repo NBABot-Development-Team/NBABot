@@ -3,6 +3,7 @@ const fetch = require(`node-fetch`);
 const fs = require(`fs`);
 const path = require(`path`);
 const Discord = require(`discord.js`);
+const moment = require(`moment-timezone`);
 
 /*
 
@@ -33,44 +34,37 @@ let counter = 0;
 
 module.exports = {
 	async updateDate() {
-		fetch(`http://data.nba.net/10s/prod/v1/today.json`)
-			.then(res => res.json())
-			.then(today => {
-				let currentDate = today.links.currentDate;
+		let json = await getJSON(`https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json`);
 
-				fetch(`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json`)
-					.then(res => res.json())
-					.then(json => {
-						let dates = json.leagueSchedule.gameDates;
-						for (var i = 0; i < dates.length; i++) {
-							let d = new Date(dates[i].gameDate).toISOString().substring(0, 10).split(`-`).join(``);
-							if (d == currentDate) {
-								json = dates[i];
-							}
-						}
+		let gamesExist = true;
+		if (!json) gamesExist = false;
+		if (!json.scoreboard) gamesExist = false;
+		if (!json.scoreboard.games) gamesExist = false;
+		if (json.scoreboard.games.length == 0) gamesExist = false;
 
-						let gamesFinished = 0;
-						for (var i = 0; i < json.games.length; i++) {
-							if (json.games[i].gameStatus == 3) gamesFinished++;
-						}
+		let trueDate = moment().tz("America/New_York").format().substring(0, 10).split(`-`).join(``), currentDate;
 
-						let UTCDateObject = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate(), new Date().getUTCHours(), new Date().getUTCMinutes(), new Date().getUTCSeconds());
-						let easternDateObject = new Date(UTCDateObject - 1000 * 60 * 60 * 4);
+		if (gamesExist) {
+			json = json.scoreboard;
 
-						// let trueDate = `${easternDateObject.getFullYear()}${(parseInt(easternDateObject.getMonth()) + 1 < 10) ? `0${easternDateObject.getMonth() + 1}` : easternDateObject.getMonth() + 1}${(parseInt(easternDateObject.getDate()) < 10) ? `0${easternDateObject.getDate()}` : easternDateObject.getDate()}`;
-						let trueDate = easternDateObject.toISOString().substring(0, 10).split(`-`).join(``);
-						// today.seasonScheduleYear = 2021;
+			let gamesFinished = 0;
+			for (var i = 0; i < json.games.length; i++) {
+				if (json.games[i].gameStatus == 3) gamesFinished++;
+			}
 
-						if (currentDate != trueDate) {
-							if (json.games.length == gamesFinished) today.links.currentDate = trueDate;
-						} else today.links.currentDate = trueDate;
+			let nbaDate = json.games[0].gameCode.split(`/`)[0];
+			if (gamesFinished == json.games.length) { // Games all done, move ahead?
+				currentDate = trueDate;
+			} else currentDate = nbaDate;
+		} else currentDate = trueDate;
 
-						fs.writeFile(`./cache/today.json`, JSON.stringify(today), err => {
-							if (err) throw err;
-							// logger.cache(`Cache Updated.`);
-						});
-					});
-			});
+		let today = require(`../cache/today.json`);
+
+		today.links.currentDate = currentDate;
+
+		fs.writeFileSync(`./cache/today.json`, JSON.stringify(today), err => {
+			if (err) throw err;
+		});
 	},
 
 	async updateOdds() {
@@ -138,10 +132,57 @@ module.exports = {
 		await update();
 	},
 
-	async updateOodsTAB() {
+	async updateOddsNew() {
 		// https://api.beta.tab.com.au/v1/tab-info-service/sports/Basketball/competitions/NBA?jurisdiction=NSW&numTopMarkets=5
 
-		let odds = await getJSON(`https://api.beta.tab.com.au/v1/tab-info-service/sports/Basketball/competitions/NBA?jurisdiction=NSW&numTopMarkets=5`);
+		delete require.cache[require.resolve(`../cache/today.json`)];
+		let currentDate = require(`../cache/today.json`).links.currentDate;
+
+		let json = await getJSON(`https://cdn.nba.com/static/json/liveData/odds/odds_todaysGames.json`);
+		
+		for (var i = 0; i < json.games.length; i++) {
+			let currentDateObject = new Date(currentDate.substring(0, 4), parseInt(currentDate.substring(4, 6)) - 1, currentDate.substring(6, 8));
+
+			dateLoop: for (var j = 0; j < 5; j++) {
+				let newDate = new Date(currentDateObject.getTime() + 86400000 * i).toISOString().substring(0, 10).split(`-`).join(``);
+				if (fs.existsSync(`./cache/${newDate}/scoreboard.json`)) {
+					let games = require(`../cache/${newDate}/scoreboard.json`).games;
+					for (var k = 0; k < games.length; k++) {
+						if (games[k].gameId == json.games[i].gameId) { // Found game
+							let o = json.games[i];
+							
+							let odds;
+							if (fs.existsSync(`./cache/${newDate}/odds.json`)) {
+								odds = require(`../cache/${newDate}/odds.json`);
+							} else {
+								odds = {};
+							}
+
+							for (var l = 0; l < o.markets.length; l++) {
+								if (o.markets[l].name == `2way`) {
+									for (var m = 0; m < o.markets[l].books[0].outcomes.length; m++) {
+										let location = o.markets[l].books[0].outcomes[m].type;
+										let odd = parseFloat(o.markets[l].books[0].outcomes[m].odds);
+
+										if (odd > 2) {
+											odd = parseInt(100 * (odd - 1));
+										} else {
+											odd = parseInt(100 / (1 - odd));
+										}
+
+										odds[`${games[k].awayTeam.teamTricode} @ ${games[k].homeTeam.teamTricode}`][`${location}TeamOdds`].moneyLine = odd;
+									}
+								}
+							}
+
+							fs.writeFileSync(`./cache/${newDate}/odds.json`, JSON.stringify(odds), err => {
+								if (err) throw err;
+							});
+						}
+					}
+				} else continue dateLoop;
+			}
+		}
 	},
 
 	async updateScores() {

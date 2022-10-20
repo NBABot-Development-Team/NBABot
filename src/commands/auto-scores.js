@@ -36,7 +36,7 @@ module.exports = {
         user = user[0];
 
         // Checking if user is donator
-        if (user.Donator != `y` && user.Donator != `f`) return await interaction.reply(`Only donators can use auto scores. To find out more, use \`/donate\`.`);
+        if (user.Donator != `y` && user.Donator != `f`) return await interaction.reply(`Only Finals MVP donators can use auto scores. To learn more, use \`/donate\`.`);
         if (user.Donator == `y`) return await interaction.reply(`This feature is only available to Finals MVP Donators.`);
 
         // Seeing whether start/stop

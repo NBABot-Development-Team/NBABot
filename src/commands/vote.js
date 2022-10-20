@@ -14,7 +14,7 @@ module.exports = {
 		let { interaction } = variables;
 
 		let embed = new Discord.MessageEmbed()
-			.setDescription(`Vote for NBABot **[here](https://top.gg/bot/544017840760422417/vote)** to get $10 in the simulated betting system.`)
+			.setDescription(`Vote for NBABot **[here](https://top.gg/bot/544017840760422417/vote)** every 12 hours to get $10 in the simulated betting system.`)
 			.setColor(teamColors.NBA);
 
 		return await interaction.reply({ embeds: [embed] });

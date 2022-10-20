@@ -220,7 +220,7 @@ module.exports = {
         try {
             await interaction.user.send({ embeds: [embed2] });
         } catch (e) {
-            console.log(e);
+            embed.addField(`Note: NBABot could not DM you all your current bets. Use \`/bets\` for this.`, `To allow NBABot to DM you once your bets are claimed,\nGo to Settings > Privacy & Safety > Allow direct messages from server members.`);
         }
 
         return await interaction.reply({ embeds: [embed] });

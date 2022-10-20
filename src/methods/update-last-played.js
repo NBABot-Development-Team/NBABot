@@ -88,8 +88,8 @@ async function update2() {
 
     let maxPlatoonSize = 25;
     let delay = 1200;
-    let defaultYear = 2022;
     let s = [2018, 2019, 2020, 2021, 2022];
+    let defaultYear = s[s.length - 1];
 
     for (var key in names) {
         if (!lastPlayed[key]) lastPlayed[key] = defaultYear;
@@ -137,7 +137,6 @@ async function update2() {
                 if (err) throw err;
             });
         }
-        console.log(lastPlayed[`248`]);
     }
 }
 

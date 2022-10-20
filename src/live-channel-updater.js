@@ -115,9 +115,11 @@ async function Scores() {
     }
     beforeDateGamesFinished = beforeDateGamesFinished?.Finished;
 
+    let changedDate = false;
     if (beforeDateGamesFinished) {
         if (beforeDateGamesFinished == `n`) {
             currentDate = beforeDate;
+            changedDate = true;
         }
     }
 
@@ -134,7 +136,18 @@ async function Scores() {
 		}
 	}
 	if (!b) {
-		b = await getJSON(`https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json`);
+        if (changedDate) {
+            b = await getJSON(`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json`);
+
+            let dates = b.leagueSchedule.gameDates;
+            for (var i = 0; i < dates.length; i++) {
+                let d = new Date(dates[i].gameDate);
+                d = d.toISOString().substring(0, 10).split(`-`).join(``);
+                if (d == currentDate) {
+                    b = dates[i];
+                }
+            }
+        } else b = await getJSON(`https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json`);
 	}
 
     if (!b) return;
@@ -146,7 +159,7 @@ async function Scores() {
     let dateString = new Date(currentDate.substring(0, 4), parseInt(currentDate.substring(4, 6)) - 1, currentDate.substring(6, 8)).toDateString();
 
     let embed = new Discord.MessageEmbed()
-        .setTitle(`<:NBA:582679355373649950> Scores for ${dateString}`)
+        .setTitle(`<:NBA:582679355373649950> __Scores for ${dateString}__`)
         .setFooter({ text: `Last updated `})
         .setTimestamp()
         .setAuthor({ name: `NBABot (nbabot.js.org)`, iconURL: `https://cdn.discordapp.com/avatars/544017840760422417/2f4585b982abde74155ceaaa4c61d454.png?size=64`, url: `https://nbabot.js.org/`})

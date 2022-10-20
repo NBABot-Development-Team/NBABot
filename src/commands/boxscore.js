@@ -33,6 +33,7 @@ module.exports = {
 		let requestedDate = interactionSource.options.getString(`date`);
 
 		// Checking that the team and date is valid
+		let today = false;
 		requestedTeam = formatTeam(requestedTeam);
 		if (!requestedTeam) {
 			return await interactionSource.reply({ content: `Please specify a valid team, e.g. Suns or PHX. Use /teams for more info.` });
@@ -41,6 +42,7 @@ module.exports = {
 			// Get today's date
 			delete require.cache[require.resolve(`../cache/today.json`)];
 			requestedDate = require(`../cache/today.json`).links.currentDate;
+			today = true;
 		} else {
 			let { runDatabase } = require(`../bot.js`);
 			if (runDatabase) {
@@ -53,15 +55,25 @@ module.exports = {
 		}
 
 		// Checking if cache can be used
-		let json = await getJSON(`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json`);
-		let dates = json.leagueSchedule.gameDates;
-		for (var i = 0; i < dates.length; i++) {
-			let d = new Date(dates[i].gameDate);
-			d = d.toISOString().substring(0, 10).split(`-`).join(``);
-			if (d == requestedDate) {
-				json = dates[i];
+		let json;
+		if (today) {
+			json = require(`../cache/${requestedDate}/scoreboard.json`);
+		} else {
+			if (fs.existsSync(`./cache/${requestedDate}/scoreboard.json`)) {
+				json = require(`../cache/${requestedDate}/scoreboard.json`);
+			} else {
+				let json = await getJSON(`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json`);
+				let dates = json.leagueSchedule.gameDates;
+				for (var i = 0; i < dates.length; i++) {
+					let d = new Date(dates[i].gameDate);
+					d = d.toISOString().substring(0, 10).split(`-`).join(``);
+					if (d == requestedDate) {
+						json = dates[i];
+					}
+				}
 			}
 		}
+
 		/*if (fs.existsSync(`./cache/${requestedDate}/`)) {
 			if (fs.existsSync(`./cache/${requestedDate}/scoreboard.json`)) {
 				json = require(`../cache/${requestedDate}/scoreboard.json`);
@@ -169,7 +181,7 @@ module.exports = {
 
 				// Actual details
 				let str1 = `__#${a.jerseyNum} **${a.name}**, ${p.min} mins played__`;
-				let str2 = `\`${p.points}\`pts \`${p.assists}\`ast \`${p.reboundsTotal}\`reb \`${p.steals}\`stl \`${p.blocks}\`blk \`${p.fieldGoalsMade}-${p.fieldGoalsAttempted} ${convertToPercentage(p.fieldGoalsMade, p.fieldGoalsAttempted)}\`fg \`${p.freeThrowsMade}-${p.freeThrowsAttempted} ${convertToPercentage(p.freeThrowsMade, p.freeThrowsAttempted)}\`ft \`${p.threePointersMade}-${p.threePointersAttempted} ${convertToPercentage(p.threePointersMade, p.threePointersAttempted)}\`3p \`${p.foulsPersonal}\`pf \`${p.plusMinusPoints}\`+/-`;
+				let str2 = `\`${p.points}\`pts \`${p.assists}\`ast \`${p.reboundsTotal}\`reb \`${p.steals}\`stl \`${p.blocks}\`blk \`${p.turnovers}\`to \`${p.fieldGoalsMade}-${p.fieldGoalsAttempted} ${convertToPercentage(p.fieldGoalsMade, p.fieldGoalsAttempted)}\`fg \`${p.freeThrowsMade}-${p.freeThrowsAttempted} ${convertToPercentage(p.freeThrowsMade, p.freeThrowsAttempted)}\`ft \`${p.threePointersMade}-${p.threePointersAttempted} ${convertToPercentage(p.threePointersMade, p.threePointersAttempted)}\`3p \`${p.foulsPersonal}\`pf \`${p.plusMinusPoints}\`+/-`;
 
 				embed.addField(str1, str2);
 			}

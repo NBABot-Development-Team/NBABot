@@ -2,6 +2,7 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const Discord = require(`discord.js`);
 const canvas = require(`canvas`);
+const fetch = require(`node-fetch`);
 
 // Assets
 const teamColors = require(`../assets/teams/colors.json`);
@@ -43,7 +44,7 @@ module.exports = {
         let requestedName = interaction.options.getString(`name`),
             requestedSeason = interaction.options.getString(`season`),
             requestedMode = interaction.options.getString(`mode`),
-            season, mode, switchedToRegularSeason = false;
+            season, mode, switchedToRegularSeason = false, useNewAPI = false;
 
         // Getting today.json
         delete require.cache[require.resolve(`../cache/today.json`)];
@@ -53,6 +54,7 @@ module.exports = {
         if (requestedSeason) {
             season = formatSeason(requestedSeason);
             if (!season) return interaction.editReply(`Please use a valid season, e.g. 2019 for 2019-2020.`);
+            if (season == 2022) useNewAPI = true;
         }
 
         // Validating mode
@@ -109,13 +111,11 @@ module.exports = {
             if (season < 2016) allowedToGetFromNBA = false;
         }
 
-        /*
         if (ids.nba[requestedName.toLowerCase()] && !found && allowedToGetFromNBA) {
             possible.nba[ids.nba[requestedName.toLowerCase()]] = requestedName.length;
             if (!season) season = lastPlayed.nba[ids.nba[requestedName.toLowerCase()]];
             found = true;
         }
-        */
 
         if (!found) {
             if (ids.bdl[requestedName.toLowerCase()]) {
@@ -128,7 +128,7 @@ module.exports = {
         if (!found) {
             // Now doing full search
             sourceLoop: for (var key in possible) {
-                if (key == `nba`) continue sourceLoop;
+                // if (key == `nba`) continue sourceLoop;
                 nameLoop: for (var name in ids[key]) {
                     if (namesAlreadyPushed.includes(name)) continue nameLoop;
                     let names = name.split(` `);
@@ -171,7 +171,7 @@ module.exports = {
 
                 for (var key in possible) {
                     if (Object.keys(possible[key]).length > 0) {
-                        let str1 = (key == `nba`) ? `Possible players since 2016-17:` : `Possible players:`;
+                        let str1 = (key == `nba`) ? `Possible players since 2016-17:` : `Possible players before 2016-17:`;
                         let str2 = ``;
                         for (var i = 0; i < Object.keys(possible[key]).length; i++) {
                             str2 += `\`${names[key][Object.keys(possible[key])[i]]}\` `;
@@ -194,46 +194,67 @@ module.exports = {
         if (!season) season = lastPlayed[details.source][details.id];
 
         // Found a certain player
-        let url = (details.source == `nba`) ? `http://data.nba.net/10s/prod/v1/${season}/players/${details.id}_profile.json` : `https://balldontlie.io/api/v1/season_averages?player_ids[]=${details.id}&season=${season}`;
+        let url = (details.source == `nba`) ? `https://stats.nba.com/stats/playerprofilev2?LeagueID=&PerMode=PerGame&PlayerID=${details.id}` : `https://balldontlie.io/api/v1/season_averages?player_ids[]=${details.id}&season=${season}`;
 
         console.log(url);
 
-        let json = await getJSON(url);
+        async function getNewAPI(url) {
+            return new Promise(resolve => {
+                fetch(url, {
+                    headers: require(`../config.json`).headers
+                }).then(async res => {
+                    let a = await res.text();
+                    a = JSON.parse(a);
+                    resolve(a);
+                });
+            });
+        }
 
         let p, color = teamColors.NBA;
+
+        let json;
+
         if (details.source == `nba`) {
+            json = await getNewAPI(url);
             try {
                 if (mode == `regular`) {
-                    let seasons = json.league.standard.stats.regularSeason.season;
+                    let seasons = json.resultSets[0].rowSet;
                     for (var i = 0; i < seasons.length; i++) {
-                        if (season == seasons[i].seasonYear) {
-                            p = seasons[i].total;  
+                        if (season.toString() == seasons[i][1].split(`-`)[0]) {
+                            p = seasons[i];
 
                             // Getting team color
-                            if (seasons[i].teams.length == 1) color = teamColors[teamNames[seasons[i].teams[0].teamId]]; 
+                            if (p[3]) color = teamColors[teamNames[p[3]]]; 
                             break;
                         }
                     }
-                    if (!p) p = seasons[0].total;
                 } else if (mode == `career`) {
-                    p = json.league.standard.stats.careerSummary;
+                    p = json.resultSets[1].rowSet[0];
 
-                    // Only using team color if every season is for that one team
-                    let latestTeamId = json.league.standard.stats.regularSeason.season[0].teams[0].teamId, canUseTeamColor = true;
-                    let seasons = json.league.standard.stats.regularSeason.season;
-                    for (var i = 0; i < seasons.length; i++) {
-                        if (seasons[i].teams.length > 1) {
-                            canUseTeamColor = false;
-                            break;
-                        } else if (seasons[i].teams[0].teamId != latestTeamId) {
-                            canUseTeamColor = false;
-                            break;
+                    // Using latest team colour
+                    color = teamColors[teamNames[json.resultsSet[0].rowSet[json.resultSets[0].rowSet.length - 1][3]]];
+                } else if (mode == `playoffs`) {
+                    let playoffStatsExist = true;
+                    if (!json.resultSets[2]) playoffStatsExist = false;
+                    else if (!json.resultSets[2].rowSet) playoffStatsExist = false;
+                    else if (json.resultSets[2].rowSet.length == 0) playoffStatsExist = false;
+                    if (!playoffStatsExist) return await interaction.reply(`\`${details.name}\` has not played in the playoffs yet.`);
+
+                    p = json.resultSets[2];
+                    let foundSeason = false;
+                    seasonLoop: for (var i = 0; i < p.rowSet.length; i++) {
+                        if (season.toString() == p.rowSet[i][1].split(`-`)[0]) {
+                            foundSeason = true;
+                            p = p.rowSet[i];
+                            color = teamColors[teamNames[p[3]]];
+                            break seasonLoop;
                         }
                     }
 
-                    if (canUseTeamColor) color = teamColors[teamNames[latestTeamId]];
-                } else if (mode == `playoffs`) {
-                    p = json.league.standard.stats.latest;
+                    if (!foundSeason) return await interaction.reply(`Could not find playoff stats for \`${details.name}\` in the \`${season}-${parseInt(season + 1)}\` season.`);
+ 
+
+                    /*p = json.league.standard.stats.latest;
                     
                     let canUsePlayoffStats = true;
                     if (!p.seasonStageId) canUsePlayoffStats = false;
@@ -250,14 +271,30 @@ module.exports = {
                             if (seasons[i].teams.length == 1) color = teamColors[teamNames[seasons[i].teams[0].teamId]]; 
                             break;
                         }
-                    }
+                    }*/
                 }
 
-                for (var key in p) {
+                /*for (var key in p) {
                     p[key] = parseFloat(p[key]);
+                }*/
+
+                // Remapping everything to fit
+                // TODO - remove triple doubles +/-, fix turnovers per game, pFouls
+                let temp = {};
+                let keys = [`g`, `gamesPlayed`, `gamesStarted`, `mpg`, `fgp`, `ftp`, `tpp`, `rpg`, `apg`, `spg`, `bpg`, `turnovers`, `pFouls`, `ppg`, `points`, `fgm`, `tpm`, `fga`, `tpa`, `fta`, `ftm`, `offReb`, `defReb`];
+                let values = [6, 6, 7, 8, 11, 17, 14, 20, 21, 22, 23, 24, 25, 26, 26, 9, 12, 10, 13, 16, 15, 18, 19];
+                for (var i = 0; i < keys.length; i++) {
+                    /*if ([`turnovers`, `pFouls`].includes(keys[i])) {
+                        temp[keys[i]] = parseFloat(p[values[i]]) * p[6];
+                    } else */
+                    temp[keys[i]] = parseFloat(p[values[i]]);
+                    if ([`fgp`, `ftp`, `tpp`].includes(keys[i])) temp[keys[i]] = parseFloat(100 * temp[keys[i]]).toFixed(1);
                 }
+                p = temp;
+
             } catch (e) {console.log(e)}
         } else { // Extra remapping for bdl
+            json = await getJSON(url);
             if (mode != `regular`) return await interaction.editReply(`Only regular season stats are supported for seasons before 2016-2017.`);
 
             let statsExist = true;
@@ -268,14 +305,14 @@ module.exports = {
             else if (!json.data[0]) statsExist = false;
             else if (!json.data[0].games_played) statsExist = false;
 
-            if (!statsExist) return await interaction.editReply(`${season}-${season + 1} ${mode} stats could not be found for ${details.name}.`);
+            if (!statsExist) return await interaction.editReply(`${season}-${season + 1} ${mode} stats could not be found for ${details.name}. [1]`);
 
             p = json.data[0];
         }
 
         // Error catching
-        if (!p) return await interaction.editReply(`${season}-${season + 1} ${mode} stats could not be found for ${details.name}.`);
-        if (details.source == `nba` && !p.gamesPlayed) return await interaction.editReply(`${season}-${season + 1} ${mode} stats could not be found for ${details.name}.`);
+        if (!p) return await interaction.editReply(`${season}-${season + 1} ${mode} stats could not be found for ${details.name}. [2]`);
+        if (details.source == `nba` && !p.gamesPlayed) return await interaction.editReply(`${season}-${season + 1} ${mode} stats could not be found for ${details.name}. [3]`);
 
         // Calculated stats
         let _2pp, _efgp, _tsp, _tovp, _gmsc, _plusMinus;
@@ -291,8 +328,8 @@ module.exports = {
             _efgp = (((p.fgm + (0.5 * p.tpm)) / p.fga) * 100).toPrecision(3);
             _tsp = ((p.points / (2 * (p.fga + (0.44 * p.fta)))) * 100).toPrecision(3);
             _tovp = ((p.turnovers / (p.fga + p.turnovers + (0.44 * p.fta))) * 100).toPrecision(3);
-            _gmsc = p.ppg + (0.4 * (p.fgm / p.g)) - (0.7 * (p.fga / p.g)) - (0.4 * ((p.fta / p.g) - (p.ftm / p.g))) + (0.7 * (p.offReb / p.g)) + (0.3 * (p.defReb / p.g)) + p.spg + (0.7 * p.apg) + (0.7 * p.bpg) - (0.4 * (p.pFouls / p.g)) - (p.turnovers / p.g);
-            _plusMinus = (parseInt(p.plusMinus) < 0) ? p.plusMinus : `+${p.plusMinus}`;
+            _gmsc = p.ppg + (0.4 * (p.fgm /*/ p.g*/)) - (0.7 * (p.fga /*/ p.g*/)) - (0.4 * ((p.fta /*/ p.g*/) - (p.ftm /*/ p.g*/))) + (0.7 * (p.offReb /*/ p.g*/)) + (0.3 * (p.defReb /*/ p.g*/)) + p.spg + (0.7 * p.apg) + (0.7 * p.bpg) - (0.4 * (p.pFouls /*/ p.g*/)) - (p.turnovers /*/ p.g*/);
+            // _plusMinus = (parseInt(p.plusMinus) < 0) ? p.plusMinus : `+${p.plusMinus}`;
         }
 
         // Setting up the canvas
@@ -322,7 +359,7 @@ module.exports = {
         x.fillText(detailText, 2*x.measureText(details.name).width, 50);
 
         x.font = `25px WhitneyBold`;
-        x.fillStyle = /*`#E56020`*/ color;
+        x.fillStyle = /*`#E56020`*/ /*color*/ teamColors.NBA;
         x.fillText(`PPG`, 15, 70 + 20);
         x.fillText(`RPG`, 105, 70 + 20);
         x.fillText(`APG`, 200, 70 + 20);
@@ -344,7 +381,7 @@ module.exports = {
         x.fillText((details.source == `nba`) ? p.mpg : p.min, 685, 100 + 20);
 
         x.font = `25px WhitneyBold`;
-        x.fillStyle = /*`#E56020`*/ color;
+        x.fillStyle = /*`#E56020`*/ /*color*/ teamColors.NBA;
         x.fillText(`FG%`, 15, 140 + 20);
         x.fillText(`FT%`, 105, 140 + 20);
         x.fillText(`2P%`, 200, 140 + 20);
@@ -366,21 +403,21 @@ module.exports = {
         x.fillText(p.g, 685, 170 + 20);
 
         x.font = `25px WhitneyBold`;
-        x.fillStyle = /*`#E56020`;*/ color;
+        x.fillStyle = /*`#E56020`; color*/ teamColors.NBA;
         if (details.source == `nba`) {
             x.fillText(`G Started`, 15, 210 + 20);
-            x.fillText(`Total +/-`, 195, 210 + 20);
-            x.fillText(`3 Doubles`, 355, 210 + 20);
-            x.fillText(`Average GmSc`, 540, 210 + 20);
+            x.fillText(`Average GmSc`, 195, 210 + 20);
+            // x.fillText(`3 Doubles`, 355, 210 + 20);
+            // x.fillText(`Average GmSc`, 540, 210 + 20);
         } else x.fillText(`Average GmSc`, 15, 210 + 20);
 
         x.font = `20px WhitneyLight`;
         x.fillStyle = `#FFFFFF`;
         if (details.source == `nba`) {
             x.fillText(p.gamesStarted, 15, 240 + 20);
-            x.fillText(_plusMinus, 195, 240 + 20);
-            x.fillText(p.td3, 355, 240 + 20);
-            x.fillText(_gmsc.toFixed(1), 540, 240 + 20);
+            x.fillText(_gmsc.toFixed(1), 195, 240 + 20);
+            // x.fillText(p.td3, 355, 240 + 20);
+            // x.fillText(_gmsc.toFixed(1), 540, 240 + 20);
         } else x.fillText(_gmsc.toFixed(1), 15, 240 + 20);
 
         canvas.loadImage(`assets/images/logo.png`).then(image => {

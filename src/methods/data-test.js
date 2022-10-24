@@ -3,7 +3,7 @@ const config = require(`../config.json`);
 const fs = require(`fs`);
 
 // https://stats.nba.com/stats/playerprofilev2?LeagueID=&PerMode=PerGame&PlayerID=1631095
-fetch(`https://stats.nba.com/stats/franchiseleaders?LeagueID=&TeamID=1610612739`, {
+fetch(`https://stats.nba.com/stats/leaguedashteamstats?Conference=&DateFrom=&DateTo=&Division=&GameScope=&GameSegment=&Height=&LastNGames=0&LeagueID=00&Location=&MeasureType=Base&Month=0&OpponentTeamID=0&Outcome=&PORound=0&PaceAdjust=N&PerMode=PerGame&Period=0&PlayerExperience=&PlayerPosition=&PlusMinus=N&Rank=N&Season=2022-23&SeasonSegment=&SeasonType=Regular%20Season&ShotClockRange=&StarterBench=&TeamID=0&TwoWay=0&VsConference=&VsDivision=`, {
     headers: config.headers
 }).then(async res => {
     let a = await res.text();
@@ -24,4 +24,5 @@ fetch(`https://stats.nba.com/stats/franchiseleaders?LeagueID=&TeamID=1610612739`
     */
 
     console.log(JSON.stringify(a));
+    
 });

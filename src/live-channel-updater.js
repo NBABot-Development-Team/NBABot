@@ -93,7 +93,6 @@ async function Scores() {
     let lastEdited = await getValue(con, `scores_games_finished`, `Date`, `lastedit`);
     lastEdited = parseInt(lastEdited.Finished);
     console.log(`lastedit difference: ${new Date().getTime() - 1000 * 60 * 20} ${lastEdited}`);
-    if (new Date().getTime() - 1000 * 60 * 20 < lastEdited) return;
 
     delete require.cache[require.resolve(`./cache/today.json`)];
     let currentDate = require(`./cache/today.json`).links.currentDate;
@@ -101,6 +100,9 @@ async function Scores() {
     let currentDateObject = new Date(parseInt(currentDate.substring(0, 4)), parseInt(currentDate.substring(4, 6)) - 1, parseInt(currentDate.substring(6, 8)));
     let beforeDateObject = new Date(currentDateObject.getTime() - 86400000);
     let beforeDate = beforeDateObject.toISOString().substring(0, 10).split(`-`).join(``);
+    console.log(beforeDate);
+
+    if (new Date().getTime() - 1000 * 60 * 20 < lastEdited) return;
 
     let beforeDateGamesFinished;
     try {
@@ -135,7 +137,7 @@ async function Scores() {
 			usedCache = true;
 		}
 	}
-	if (!b) {
+	if (!b && !usedCache) {
         if (changedDate) {
             b = await getJSON(`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json`);
 
@@ -147,7 +149,10 @@ async function Scores() {
                     b = dates[i];
                 }
             }
-        } else b = await getJSON(`https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json`);
+        } else {
+            b = await getJSON(`https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json`);
+            b = b?.scoreboard;
+        }
 	}
 
     if (!b) return;

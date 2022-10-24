@@ -8,17 +8,32 @@ const teamColors = require(`../assets/teams/colors.json`);
 // Assets
 const ids = {
     bdl: require(`../assets/players/bdl/ids.json`),
+    nba: require(`../assets/players/nba/ids.json`)
 };
 const names = {
     bdl: require(`../assets/players/bdl/names.json`),
+    nba: require(`../assets/players/nba/names.json`)
 };
 const lastPlayed = {
     bdl: require(`../assets/players/bdl/last-played.json`),
+    nba: require(`../assets/players/nba/last-played.json`)
 };
 
 // Methods
 const getJSON = require(`../methods/get-json.js`);
 const formatSeason = require(`../methods/format-season.js`);
+
+async function getNewAPI(url) {
+    return new Promise(resolve => {
+        fetch(url, {
+            headers: require(`../config.json`).headers
+        }).then(async res => {
+            let a = await res.text();
+            a = JSON.parse(a);
+            resolve(a);
+        });
+    });
+}
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -37,6 +52,7 @@ module.exports = {
 
         let per36 = interaction.options.getBoolean(`per36`);
         if (!per36) per36 = false;
+        let forcedToUseNBA = [false, false];
 
         let namesInput = [interaction.options.getString(`player1_name`), interaction.options.getString(`player2_name`)];
         let seasons = [formatSeason(interaction.options.getString(`player1_season`)), formatSeason(interaction.options.getString(`player2_season`))];
@@ -51,7 +67,7 @@ module.exports = {
             let name = namesInput[i].toLowerCase();
 
             // Exact match
-            if (ids.bdl[name]) {
+            if (ids.bdl[name] && seasons[i] < 2022) {
                 idsFinal.push(ids.bdl[name]);
                 continue nameLoop;
             }
@@ -67,7 +83,7 @@ module.exports = {
                 }
             }
 
-            if (Object.keys(possible).length == 1) { // Only one possibility, thus certain
+            if (Object.keys(possible).length == 1 && seasons[i] < 2022) { // Only one possibility, thus certain
                 idsFinal.push(Object.keys(possible)[0]);
                 continue nameLoop;
             } else {
@@ -82,16 +98,43 @@ module.exports = {
                     }
                 }
 
-                if (count == 1 && top > 0) { // One possibility has higher score than the rest, thus certain
+                if (count == 1 && top > 0 && seasons[i] < 2022) { // One possibility has higher score than the rest, thus certain
                     idsFinal.push(key);
                     continue nameLoop;
-                } else return await interaction.editReply(`\`${name}\` is not a valid or specific name of a player. You can find the player's exact name with \`/player-stats\`.`);
+                } else {
+                    if (ids.nba[name]) {
+                        forcedToUseNBA[i] = true;
+                        idsFinal[i] = ids.nba[name];
+                        names.bdl[idsFinal[i]] = names.nba[idsFinal[i]];
+                    } else return await interaction.editReply(`\`${name}\` is not a valid or specific name of a player. You can find the player's exact name with \`/player-stats\`.`);
+                } 
             }
         }
 
-        for (var i = 0; i < idsFinal.length; i++) {
-            let stat = await getJSON(`https://balldontlie.io/api/v1/season_averages?player_ids[]=${idsFinal[i]}&season=${seasons[i]}`);
-            stats.push(stat.data[0]);
+        IDsLoop: for (var i = 0; i < idsFinal.length; i++) {
+            if (!forcedToUseNBA[i]) {
+                let stat = await getJSON(`https://balldontlie.io/api/v1/season_averages?player_ids[]=${idsFinal[i]}&season=${seasons[i]}`);
+                stats.push(stat.data[0]);
+            } else {
+                let stat = await getNewAPI(`https://stats.nba.com/stats/playerprofilev2?LeagueID=&PerMode=PerGame&PlayerID=${idsFinal[i]}`);
+                let json = stat.resultSets[0].rowSet;
+
+                for (var j = 0; j < json.length; j++) {
+                    if (seasons[i].toString() == json[j][1].split(`-`)[0]) {
+                        stat = json[j];
+
+                        let temp = {};
+                        let keys = [`games_played`, `fg_pct`, `ft_pct`, `fg3_pct`, `reb`, `ast`, `stl`, `blk`, `turnover`, `pf`, `ppg`, `pts`, `fgm`, `fg3m`, `fga`, `fg3a`, `fta`, `ftm`, `oreb`, `dreb`];
+                        let values = [6, 11, 17, 14, 20, 21, 22, 23, 24, 25, 26, 26, 9, 12, 10, 13, 16, 15, 18, 19];
+                        for (var k = 0; k < keys.length; k++) {
+                            temp[keys[k]] = parseFloat(stat[values[k]]);
+                        }
+                        temp.min = `${stat[8].toString().split(`.`)[0]}:${(stat[8].toString().split(`.`)[1]) ? parseInt(stat[8].toString().split(`.`)[1]) * 6 : `00`}`;
+                        stat = temp;
+                        stats.push(stat);
+                    }
+                }
+            }
         }
 
         if (!stats[0]) return await interaction.editReply(`${seasons[0]}-${seasons[0] + 1} regular stats could not be found for ${names.bdl[idsFinal[0]]}.`);

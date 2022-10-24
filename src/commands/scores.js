@@ -327,7 +327,7 @@ module.exports = {
 				}
 			}
 
-			let sendObject = (interactionSource.user.id == `401649168948396032`) ? { embeds: [embed], components: [row] } : { embeds: [embed] }; 
+			let sendObject = (interactionSource.user.id == `401649168948396032`) ? { embeds: [embed] } : { embeds: [embed] }; 
 
 			if (update) {
 				if (requestedDate) {

@@ -80,7 +80,7 @@ function updateCommands(ID) {
 			await query(con, `UPDATE guilds SET Version = ${version} WHERE ID = "${ID}";`);
 			guildResult = guildResult[0];
 		} else {
-			await query(con, `INSERT INTO guilds VALUES ("${ID}", ${version}, "y");`);
+			await query(con, `INSERT INTO guilds VALUES ("${ID}", ${version}, "y", NULL);`);
 			guildResult = {ID: ID, Version: version, Betting: `y`};
 		}
 
@@ -133,7 +133,7 @@ client.on(`guildCreate`, async guild => {
 		await query(con, `UPDATE guilds SET Version = ${version} WHERE ID = "${guild.id}";`);
 		guildResult = guildResult[0];
 	} else {
-		await query(con, `INSERT INTO guilds VALUES ("${guild.id}", ${version}, "y");`);
+		await query(con, `INSERT INTO guilds VALUES ("${guild.id}", ${version}, "y", NULL);`);
 		guildResult = {ID: guild.id, Version: version, Betting: `y`};
 	}
 
@@ -183,7 +183,7 @@ client.on(`messageCreate`, async message => {
 			await query(con, `UPDATE guilds SET Version = ${version} WHERE ID = "${message.guild.id}";`);
 			guild = guild[0];
 		} else {
-			await query(con, `INSERT INTO guilds VALUES ("${message.guild.id}", ${version}, "y");`);
+			await query(con, `INSERT INTO guilds VALUES ("${message.guild.id}", ${version}, "y", NULL);`);
 			guild = {ID: message.guild.id, Version: version, Betting: `y`};
 		}
 
@@ -461,7 +461,7 @@ client.on(`interactionCreate`, async interaction => {
 	if (guildExists) {
 		guild = guild[0];
 	} else {
-		await query(con, `INSERT INTO guilds VALUES ("${message.guild.id}", ${version}, "y");`);
+		await query(con, `INSERT INTO guilds VALUES ("${message.guild.id}", ${version}, "y", NULL);`);
 		guild = {ID: message.guild.id, Version: version, Betting: `y`};
 	}
 
@@ -486,6 +486,22 @@ client.on(`interactionCreate`, async interaction => {
 			}
 		}
 
+		let guild = await query(con, `SELECT * FROM guilds WHERE ID = "${interaction.guild.id}";`);
+		guild = guild[0];
+
+		if (guild.BettingChannel) {
+			let channel;
+			try {
+				channel = await interaction.guild.channels.fetch(guild.bettingChannel);
+			} catch (e) {
+				console.log(`Unknown channel!`);
+				channel = null;
+			}
+			if (channel && guild.BettingChannel != interaction.channel.id && config.bettingCommands.includes(interaction.commandName)) {
+				return await interaction.reply(`Betting is only enabled in <#${guild.BettingChannel}>. Use \`/settings betting-channel\` to change this.`);
+			}
+		}
+
 		if ((user.Ads == "y" || user.Donator == "n") && !removeAds) { // Show ads
 			delete require.cache[require.resolve(`./config.json`)];
 			let ads = require(`./config.json`).ads;
@@ -503,7 +519,7 @@ client.on(`interactionCreate`, async interaction => {
 		if (user.Betting == `n`) betting = false;
 
 		try {
-			await command.execute({ interaction, client, con, ad, betting });
+			await command.execute({ interaction, client, con, ad, betting, shardID });
 		} catch (error) {
 			console.log(error);
 			logger.error(error);
@@ -545,6 +561,7 @@ process.on(`exit`, () => {
 // Updating cache
 const methods = require(`./methods/update-cache.js`);
 const { donatorScores } = require('./methods/update-cache.js');
+const { registerCustomQueryHandler } = require('puppeteer');
 
 // Cache and updating stuff
 methods.updateDate();
@@ -584,7 +601,7 @@ async function DonatorScores() {
 
         if (user.Donator != `y` && user.Donator != `f`) continue donatorLoop;
         if (!user.ScoreChannels) continue donatorLoop;
-		if (user.ScoreChannels == "NULL") continue donatorLoop;
+		if (user.ScoreChannels == "NULL" || user.ScoreChannels == `null`) continue donatorLoop;
         let userChannels = user.ScoreChannels.split(`,`);
         if (!userChannels[0]) continue donatorLoop;
         for (var j = 0; j < userChannels.length; j++) {
@@ -670,16 +687,35 @@ async function DonatorScores() {
     
     // Sending/updating messages
     channelLoop: for (var i = 0; i < channels.length; i++) {
-        let details = channels[i].split(`-`); // server-channel-msg-yyymmdd
+        let details = channels[i].split(`-`); // server-channel-msg-yyymmdd-shard
 		if (details[4].toString() != shardID.toString()) continue channelLoop;
         if (details[3] == currentDate) { // Last message is same day, so no change = update
             let channel = await client.channels.fetch(details[1]);
-            let message = await channel.messages.fetch(details[2]);
-            await message.edit({ embeds: [embed] });
+			let message;
+			try {
+				message = await channel.messages.fetch(details[2]);
+			} catch (e) {
+				try {
+					message = await channel.send({ embeds: [embed] });
+				} catch (e) {
+					return;
+				}
+
+				details[2] = message.id;
+				await query(con, `UPDATE users SET ScoreChannels = "${details.join(`-`)}" WHERE ID = "${userIDs[i]}";`);
+				return;
+			}
+			
+			await message.edit({ embeds: [embed] });
+			return;
         } else { // New date, so new message
 			let channel, message;
 			channel = await client.channels.fetch(details[1]);
-			message = await channel.send({ embeds: [embed] });
+			try {
+				message = await channel.send({ embeds: [embed] });
+			} catch (e) {
+				return;
+			}
             details[2] = message.id;
             details[3] = currentDate;
             await query(con, `UPDATE users SET ScoreChannels = "${details.join(`-`)}" WHERE ID = "${userIDs[i]}";`);

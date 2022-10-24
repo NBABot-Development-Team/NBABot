@@ -13,6 +13,7 @@
 // Libraries
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const Discord = require(`discord.js`);
+// const { client } = require('../bot.js');
 
 // Methods
 const query = require(`../methods/database/query.js`);
@@ -30,7 +31,7 @@ module.exports = {
         }).setRequired(true)),
     
 	async execute(variables) {
-		let { con, interaction } = variables;
+		let { con, interaction, client, shardID } = variables;
 
 		let user = await query(con, `SELECT * FROM users WHERE ID = "${interaction.user.id}";`);
         user = user[0];
@@ -68,6 +69,15 @@ module.exports = {
         switch(option.toLowerCase()) {
             case `start`:
                 if (user.ScoreChannels && user.ScoreChannels != `NULL`) return await interaction.reply(`You currently already have live scores running. Use \`/auto-scores stop\` in that channel to start in this channel.`);
+                
+                // Trying to send message
+                let currentChannel = await client.channels.fetch(interaction.channel.id);
+                try {
+                    await currentChannel.send(`Test message (you can delete this).`);
+                } catch (e) {
+                    return await interaction.reply(`\`auto-scores\` will not work in this channel because NBABot does not have enough permissions to send messages. Give NBABot the permissions \`Send messages\`, \`Embed links\`, and \`Manage messages\` – then try this command again.`);
+                }
+
                 await query(con, `UPDATE users SET ScoreChannels = "${interaction.guild.id}-${interaction.channel.id}-0-0-0" WHERE ID = "${interaction.user.id}";`);
                 return await interaction.reply(`Live scores should start in this server soon.`);
                 break;

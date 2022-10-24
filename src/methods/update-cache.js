@@ -140,29 +140,31 @@ module.exports = {
 
 		let json = await getJSON(`https://cdn.nba.com/static/json/liveData/odds/odds_todaysGames.json`);
 		
-		for (var i = 0; i < json.games.length; i++) {
+		gameLoop: for (var i = 0; i < json.games.length; i++) {
 			let currentDateObject = new Date(currentDate.substring(0, 4), parseInt(currentDate.substring(4, 6)) - 1, currentDate.substring(6, 8));
 
 			dateLoop: for (var j = 0; j < 5; j++) {
-				let newDate = new Date(currentDateObject.getTime() + 86400000 * i).toISOString().substring(0, 10).split(`-`).join(``);
+				let newDate = new Date(currentDateObject.getTime() + 86400 * 1000 * j).toISOString().substring(0, 10).split(`-`).join(``);
+
+				let odds;
+				if (fs.existsSync(`./cache/${newDate}/odds.json`)) {
+					odds = require(`../cache/${newDate}/odds.json`);
+				} else {
+					odds = {};
+				}
+				
 				if (fs.existsSync(`./cache/${newDate}/scoreboard.json`)) {
 					let games = require(`../cache/${newDate}/scoreboard.json`).games;
 					for (var k = 0; k < games.length; k++) {
 						if (games[k].gameId == json.games[i].gameId) { // Found game
 							let o = json.games[i];
-							
-							let odds;
-							if (fs.existsSync(`./cache/${newDate}/odds.json`)) {
-								odds = require(`../cache/${newDate}/odds.json`);
-							} else {
-								odds = {};
-							}
 
 							for (var l = 0; l < o.markets.length; l++) {
 								if (o.markets[l].name == `2way`) {
-									for (var m = 0; m < o.markets[l].books[0].outcomes.length; m++) {
-										let location = o.markets[l].books[0].outcomes[m].type;
-										let odd = parseFloat(o.markets[l].books[0].outcomes[m].odds);
+									let market = o.markets[l].books[0];
+									for (var m = 0; m < market.outcomes.length; m++) {
+										let location = market.outcomes[m].type;
+										let odd = parseFloat(market.outcomes[m].odds);
 
 										if (odd > 2) {
 											odd = parseInt(100 * (odd - 1));
@@ -170,6 +172,13 @@ module.exports = {
 											odd = parseInt(100 / (1 - odd));
 										}
 
+										if (!odds) odds = {};
+										if (!odds[`${games[k].awayTeam.teamTricode} @ ${games[k].homeTeam.teamTricode}`]) {
+											odds[`${games[k].awayTeam.teamTricode} @ ${games[k].homeTeam.teamTricode}`] = {};
+										}
+										if (!odds[`${games[k].awayTeam.teamTricode} @ ${games[k].homeTeam.teamTricode}`][`${location}TeamOdds`]) {
+											odds[`${games[k].awayTeam.teamTricode} @ ${games[k].homeTeam.teamTricode}`][`${location}TeamOdds`] = {};
+										}
 										odds[`${games[k].awayTeam.teamTricode} @ ${games[k].homeTeam.teamTricode}`][`${location}TeamOdds`].moneyLine = odd;
 									}
 								}
@@ -178,11 +187,13 @@ module.exports = {
 							fs.writeFileSync(`./cache/${newDate}/odds.json`, JSON.stringify(odds), err => {
 								if (err) throw err;
 							});
+
+							break dateLoop;
 						}
 					}
 				} else continue dateLoop;
-			}
-		}
+			} // dateLoop
+		} // gameLoop
 	},
 
 	async updateScores() {

@@ -102,7 +102,7 @@ module.exports = {
         }
 
         for(var k = 0; k < json.length; k++) {
-            let description = `\`     Team    W-L  PCT GB   STR\`\n`;
+            let description = `\`     Team    W-L  PCT  GB  STR\`\n`;
 
             let teams = json[k].standings;
             

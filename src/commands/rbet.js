@@ -70,12 +70,12 @@ module.exports = {
         if (!bets) betsValid = false;
         else if (bets.length == 0) betsValid = false;
 
-        if (!betsValid) return await interaction.reply({ content: `You did not place any bets on ${new Date(date.substring(0, 4), parseInt(date.substring(4, 6)) - 1, date.substring(6, 8)).toDateString()} (\`${date.substring(4, 6)}/${date.substring(6, 8)}/${date.substring(0, 4)}\`).` });
+        let betFound = false;
+        if (!betsValid) return await interaction.reply({ content: `You did not place any bets on ${new Date(date.substring(0, 4), parseInt(date.substring(4, 6)) - 1, date.substring(6, 8)).toDateString()} (\`${date.substring(4, 6)}/${date.substring(6, 8)}/${date.substring(0, 4)}\`).` });        
         else {
             bets = bets[0][`d${date}`].split(`,`);
             if (!bets) return await interaction.reply({ content: `No bets from you were found for that date.` });
 
-            let betFound = false;
             for (var i = 0; i < bets.length; i++) {
                 if (bets[i].split(`|`)[0] == team) {
                     betFound = true;

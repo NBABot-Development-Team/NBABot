@@ -76,13 +76,12 @@ module.exports = {
                 }).addChoices({
                     name: `Off`,
                     value: `off`
-                }).setRequired(true))),
-       /*.addSubcommand(subcommand =>
+                }).setRequired(true)))
+        .addSubcommand(subcommand => 
             subcommand
-                .setName(`timezone`)
-                .setDescription(`Change your timezone, by default it is ET.`)
-                .addStringOption(option => option.setName(`timezone`).setDescription(`In the form UTC+X or UTC-X where X is hours, e.g. UTC-4.`)).setRequired(false)),
-        */
+                .setName(`betting-channel`)
+                .setDescription(`(Manage server permission required) Dedicate one channel for betting functionality.`)
+                .addChannelOption(option => option.setName(`channel`).setDescription(`Dedicated betting channel. Leave blank to allow betting functionality for the whole server.`))),
     
 	async execute(variables) {
 		let { con, interaction } = variables;
@@ -209,6 +208,21 @@ module.exports = {
                     });
 
                 return await interaction.reply({ embeds: [embed] });
+                break;
+
+            case `betting-channel`:
+                if (!interaction.member.permissions.has(`MANAGE_GUILD`)) return await interaction.reply(`To change this setting, you need the \`MANAGE_SERVER\` permission. Ask someone with this permission to change this.`);
+
+                let channel = interaction.options.getChannel(`channel`);
+
+                if (!channel) {
+                    await query(con, `UPDATE guilds SET BettingChannel = NULL WHERE ID = "${interaction.guild.id}";`);
+                    return await interaction.reply(`**Success!** Betting is not enabled for the entire server.`);
+                } else {
+                    await query(con, `UPDATE guilds SET BettingChannel = "${channel.id}" WHERE ID = "${interaction.guild.id}";`);
+                    return await interaction.reply(`**Success!** Betting is now only enabled in <#${channel.id}>.`);
+                }
+
                 break;
 
             default:

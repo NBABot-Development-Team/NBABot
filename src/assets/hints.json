@@ -1,0 +1,14 @@
+{
+    "hints": [
+        "Want to stay informed about NBABot's latest updates as they are added? Check #updates in the support server - join with the link in `/help`.",
+        "Want to know when NBABot is down for maintenance/updates? Check #downtime-updates in the support server - join with the link in `/help`.",
+        "Unsure of the spelling of a player's name? Give it your best shot and NBABot will return the most similar possibilities.",
+        "Want to see career or playoff player stats? Use the `mode` option in `/player-stats`.",
+        "Want to see NBABot's source code? Use `/github`.",
+        "Want to see tomorrow/yesterday scores/boxscores? You can use just `t` or `y` in the `date` option for these commands.",
+        "Have any questions about NBABot? Feel free to DM me, chig#4519.",
+        "Want to allocate betting functionality to just one channel in your server? Use `/settings betting-channel`.",
+        "Does NBABot have a bug or not quite working as expected? Use the #help channel in the support server - join the server with the link in `/help`.",
+        "Want to change your odds format? Select either US (e.g. -170 or +300) or Decimal (e.g. 1.90 or 2.82) with `/settings odds-format`."
+    ]
+}

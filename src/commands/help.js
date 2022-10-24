@@ -14,7 +14,7 @@ module.exports = {
 		let { interaction, ad } = variables;
 
 		const commands = {
-			nba: [`scores`, `boxscore`, `player-stats`, `player-info`, `compare-players`, `standings`, `schedule`, `roster`, `team-info`, `teams`, `news`, `transactions`, `all-time-leaders`, `league-leaders`, `franchise-leaders`],
+			nba: [`scores`, `boxscore`, `player-stats`, `player-info`, `compare-players`, `standings`, `schedule`, `roster`, `team-info`, `team-stats`, `teams`, `news`, `transactions`, `all-time-leaders`, `league-leaders`, `franchise-leaders`],
 			betting: [`bet`, `bets`, `balance`, `bets`, `claim`, `leaderboard`, `odds`, `rbet`, `reset-balance`, `weekly`],
 			other: [`bot-stats`, `help`, `img-add`, `img-delete`, `img`, `imgs`, `ping`, `settings`, `vote`, `auto-scores`, `donate`, `ad-free-servers`],
 		}

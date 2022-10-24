@@ -106,6 +106,7 @@ module.exports = {
 		}
 		
 		// Getting date object
+		console.log(gameDetails.gameTimeUTC);
 		let dateObject = new Date(gameDetails.gameTimeUTC);
 
 		// Checking if game is yet to start
@@ -153,7 +154,7 @@ module.exports = {
 		
 			let embed = new Discord.MessageEmbed()
 				.setTitle(`Boxscore for ${teamEmojis[gameDetails[teamLocation].teamTricode]} ${gameDetails[teamLocation].teamTricode} ${(teamLocation == `homeTeam`) ? `v` : `@`} ${gameDetails[otherTeamLocation].teamTricode} ${teamEmojis[gameDetails[otherTeamLocation].teamTricode]}`)
-				.setDescription(`**Start time**: ${dateObject.toDateString()}\n**Location**: ${b.game.arena.arenaCity}, ${b.game.arena.arenaName}\n**Attendance**: ${(!b.game.attendance) ? `Unknown` : ((parseInt(b.game.attendance) == 0) ? `Unknown` : b.game.attendance)}`)
+				.setDescription(`**Start time**: ${dateObject.toDateString()}\n**Location**: ${b.game.arena.arenaCity}, ${b.game.arena.arenaName}\n**Attendance**: ${(!b.game.attendance) ? `Unknown` : ((parseInt(b.game.attendance) == 0) ? `Unknown` : b.game.attendance)}\n**Game ID:** ${gameID}`)
 				.setColor(teamColors[gameDetails[teamLocation].teamTricode]);
 
 			let dnp = [];

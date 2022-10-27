@@ -133,6 +133,7 @@ async function Scores() {
 	let b, usedCache = false;
 	if (fs.existsSync(`./cache/${currentDate}/`)) {
 		if (fs.existsSync(`./cache/${currentDate}/scoreboard.json`)) {
+            delete require.cache[require.resolve(`./cache/${currentDate}/scoreboard.json`)];
 			b = require(`./cache/${currentDate}/scoreboard.json`);
 			usedCache = true;
 		}
@@ -202,6 +203,28 @@ async function Scores() {
 				}
 			}
 		} else str2 += `...`;
+
+        if (c.gameLeaders && c.gameStatus == 3) {
+            if (c.gameLeaders.homeLeaders && c.gameLeaders.awayLeaders) {
+                if (str2 == `...`) {
+                    str2 = `${c.gameLeaders.awayLeaders.name}: \`${c.gameLeaders.awayLeaders.points}\`pts \`${c.gameLeaders.awayLeaders.assists}\`ast \`${c.gameLeaders.awayLeaders.rebounds}\`reb\n${c.gameLeaders.homeLeaders.name}: \`${c.gameLeaders.homeLeaders.points}\`pts \`${c.gameLeaders.homeLeaders.assists}\`ast \`${c.gameLeaders.homeLeaders.rebounds}\`reb`;
+                } else {
+                    str2 += `${c.gameLeaders.awayLeaders.name}: \`${c.gameLeaders.awayLeaders.points}\`pts \`${c.gameLeaders.awayLeaders.assists}\`ast \`${c.gameLeaders.awayLeaders.rebounds}\`reb\n${c.gameLeaders.homeLeaders.name}: \`${c.gameLeaders.homeLeaders.points}\`pts \`${c.gameLeaders.homeLeaders.assists}\`ast \`${c.gameLeaders.homeLeaders.rebounds}\`reb`;
+                }
+            }
+        } else if (c.pointsLeaders && c.gameStatus == 3) {
+            if (c.pointsLeaders.length > 0) {
+                let str3 = ``;
+                for (var j = 0; j < c.pointsLeaders.length; j++) {
+                    str3 += `${c.pointsLeaders[j].firstName} ${c.pointsLeaders[j].lastName}: \`${parseInt(c.pointsLeaders[j].points)}\`pts\n`;
+                }
+                if (str2 == `...`) {
+                    str2 = str3;
+                } else {
+                    str2 += str3;
+                }
+            }
+        }
         
         embed.addField(str1, str2);
         embedsAdded++;

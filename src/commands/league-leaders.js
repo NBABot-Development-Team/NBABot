@@ -44,6 +44,9 @@ module.exports = {
             name: `Field Goals Attempted`,
             value: `FGA`
         }).addChoices({
+            name: `Field Goal Percentage`,
+            value: `FG_PCT`
+        }).addChoices({
             name: `Turnovers`,
             value: `TOV`
         }).addChoices({
@@ -53,11 +56,17 @@ module.exports = {
             name: `Three Pointers Attempted`,
             value: `FG3A`
         }).addChoices({
+            name: `Three Point Percentage`,
+            value: `FG3_PCT`
+        }).addChoices({
             name: `Free Throws Made`,
             value: `FTM`
         }).addChoices({
             name: `Free Throws Attempted`,
             value: `FTA`
+        }).addChoices({
+            name: `Free Throw Percentage`,
+            value: `FT_PCT`
         }).setRequired(true))
         .addStringOption(option => option.setName(`mode`).setDescription(`Whether you want to find per-game or total leaders.`).addChoices({
             name: `Per Game`,
@@ -94,6 +103,8 @@ module.exports = {
         }
         if (!seasonType) seasonType = `Regular+Season`;
 
+        if ([`FG_PCT`, `FT_PCT`, `FG3_PCT`].includes(stat)) mode = `Totals`;
+
         await interaction.deferReply();
         
         fetch(`https://stats.nba.com/stats/leagueleaders?ActiveFlag=&LeagueID=00&PerMode=${mode}&Scope=S&Season=${season}-${(parseInt(season) + 1).toString().substring(2, 4)}&SeasonType=${seasonType}&StatCategory=${stat}`, {
@@ -103,7 +114,7 @@ module.exports = {
             json = JSON.parse(json);
 
             let embed = new Discord.MessageEmbed()
-                .setTitle(`__${season}-${parseInt(season) + 1} ${seasonType.split(`+`).join(` `)} ${(mode == `PerGame`) ? `Per Game` : `Total`} League Leaders for ${stat}:__`)
+                .setTitle(`${teamEmojis.NBA} __${season}-${parseInt(season) + 1} ${seasonType.split(`+`).join(` `)} ${(mode == `PerGame`) ? `Per Game` : `Total`} League Leaders for ${stat}:__`)
                 .setColor(teamColors.NBA);
 
             let leaders = json.resultSet.rowSet;
@@ -120,6 +131,7 @@ module.exports = {
             if (!statPosition) return await interaction.editReply(`An error occurred finding that stat.`);
 
             for (var i = 0; i < max; i++) {
+                if ([`FG_PCT`, `FT_PCT`, `FG3_PCT`].includes(stat)) leaders[i][statPosition] = (parseFloat(leaders[i][statPosition]) * 100).toFixed(1);
                 description += `${i + 1}) \`${leaders[i][statPosition]}\` - **${leaders[i][2]}** ${teamEmojis[leaders[i][3]]}\n`
             }
 

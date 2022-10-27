@@ -72,10 +72,17 @@ module.exports = {
                 
                 // Trying to send message
                 let currentChannel = await client.channels.fetch(interaction.channel.id);
+                let testMessage;
                 try {
-                    await currentChannel.send(`Test message (you can delete this).`);
+                    testMessage = await currentChannel.send(`Check 1/2 done`);
+
+                    try {
+                        await testMessage.edit(`Check 2/2 done - You can delete this message`);
+                    } catch (e) {
+                        return await interaction.reply(`\`auto-scores\` will not work in this channel because NBABot does not have enough permissions to **edit** messages. Give NBABot the permissions \`Send messages\`, \`Embed links\`, and \`Manage messages\` - then try this command again.`);
+                    }
                 } catch (e) {
-                    return await interaction.reply(`\`auto-scores\` will not work in this channel because NBABot does not have enough permissions to send messages. Give NBABot the permissions \`Send messages\`, \`Embed links\`, and \`Manage messages\` – then try this command again.`);
+                    return await interaction.reply(`\`auto-scores\` will not work in this channel because NBABot does not have enough permissions to **send** messages. Give NBABot the permissions \`Send messages\`, \`Embed links\`, and \`Manage messages\` - then try this command again.`);
                 }
 
                 await query(con, `UPDATE users SET ScoreChannels = "${interaction.guild.id}-${interaction.channel.id}-0-0-0" WHERE ID = "${interaction.user.id}";`);

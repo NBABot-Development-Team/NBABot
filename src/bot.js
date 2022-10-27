@@ -598,12 +598,14 @@ async function DonatorScores() {
     let channels = [], userIDs = [];
     donatorLoop: for (var i = 0; i < donators.length; i++) {
         let user = donators[i];
-
-        if (user.Donator != `y` && user.Donator != `f`) continue donatorLoop;
+        
+		if (user.Donator != `y` && user.Donator != `f`) continue donatorLoop;
         if (!user.ScoreChannels) continue donatorLoop;
 		if (user.ScoreChannels == "NULL" || user.ScoreChannels == `null`) continue donatorLoop;
+
         let userChannels = user.ScoreChannels.split(`,`);
         if (!userChannels[0]) continue donatorLoop;
+
         for (var j = 0; j < userChannels.length; j++) {
             channels.push(userChannels[j]);
             userIDs.push(user.ID);
@@ -618,7 +620,10 @@ async function DonatorScores() {
 		let details = channels[i].split(`-`);
 		if (details[4].toString() == shardID.toString()) validChannels++; 
 	}
-	if (validChannels == 0) return;
+	if (validChannels == 0) {
+		// console.log(`${shardID.toString()} - no valid channels!`);
+		return;
+	}
 
     // Finding currentDate
     delete require.cache[require.resolve(`./cache/today.json`)];
@@ -626,7 +631,7 @@ async function DonatorScores() {
     let dateObject = new Date(currentDate.substring(0, 4), parseInt(currentDate.substring(4, 6)) - 1, currentDate.substring(6, 8));
 
     let embed = new Discord.MessageEmbed()
-        .setTitle(`${teamEmojis.NBA} NBA Scores for ${dateObject.toDateString()}`)
+        .setTitle(`${teamEmojis.NBA} __NBA Scores for ${dateObject.toDateString()}__`)
         .setColor(teamColors.NBA)
 		.setTimestamp()
 		.setFooter({ text: `Last updated `});
@@ -650,7 +655,10 @@ async function DonatorScores() {
     if (!json) numGames = 0;
     else if (!json?.games) numGames = 0;
     else if (json?.games?.length == 0) numGames = 0;
-    if (!numGames) return;
+    if (!numGames) {
+		console.log(`No games found, returning`);
+		return;
+	}
 
     // Cycle through each game and add details to a field
     let gamesFinished = 0;
@@ -680,6 +688,28 @@ async function DonatorScores() {
 				}
 			}
 		} else str2 += `...`;
+
+		if (c.gameLeaders && c.gameStatus == 3) {
+			if (c.gameLeaders.homeLeaders && c.gameLeaders.awayLeaders) {
+				if (str2 == `...`) {
+					str2 = `${c.gameLeaders.awayLeaders.name}: \`${c.gameLeaders.awayLeaders.points}\`pts \`${c.gameLeaders.awayLeaders.assists}\`ast \`${c.gameLeaders.awayLeaders.rebounds}\`reb\n${c.gameLeaders.homeLeaders.name}: \`${c.gameLeaders.homeLeaders.points}\`pts \`${c.gameLeaders.homeLeaders.assists}\`ast \`${c.gameLeaders.homeLeaders.rebounds}\`reb`;
+				} else {
+					str2 += `${c.gameLeaders.awayLeaders.name}: \`${c.gameLeaders.awayLeaders.points}\`pts \`${c.gameLeaders.awayLeaders.assists}\`ast \`${c.gameLeaders.awayLeaders.rebounds}\`reb\n${c.gameLeaders.homeLeaders.name}: \`${c.gameLeaders.homeLeaders.points}\`pts \`${c.gameLeaders.homeLeaders.assists}\`ast \`${c.gameLeaders.homeLeaders.rebounds}\`reb`;
+				}
+			}
+		} else if (c.pointsLeaders && c.gameStatus == 3) {
+			if (c.pointsLeaders.length > 0) {
+				let str3 = ``;
+				for (var j = 0; j < c.pointsLeaders.length; j++) {
+					str3 += `${c.pointsLeaders[j].firstName} ${c.pointsLeaders[j].lastName}: \`${parseInt(c.pointsLeaders[j].points)}\`pts\n`;
+				}
+				if (str2 == `...`) {
+					str2 = str3;
+				} else {
+					str2 += str3;
+				}
+			}
+		}
         
         embed.addField(str1, str2);
         embedsAdded++;
@@ -688,33 +718,51 @@ async function DonatorScores() {
     // Sending/updating messages
     channelLoop: for (var i = 0; i < channels.length; i++) {
         let details = channels[i].split(`-`); // server-channel-msg-yyymmdd-shard
-		if (details[4].toString() != shardID.toString()) continue channelLoop;
+		if (details[0] == `1033476893225275473`) console.log(`${details} ${shardID}`);
+		if (details[4].toString() != shardID.toString()) {
+			continue channelLoop;
+		}
         if (details[3] == currentDate) { // Last message is same day, so no change = update
-            let channel = await client.channels.fetch(details[1]);
+			console.log(`Updating ${details[2]} in ${details[1]} in ${details[0]} for ${details[3]}`);
+			let channel;
+			try {
+				channel = await client.channels.fetch(details[1]);
+			} catch (e) {
+				console.log(e);
+			}
+			if (!channel) console.log(`${details[1]} not found.`);
+			
 			let message;
 			try {
 				message = await channel.messages.fetch(details[2]);
 			} catch (e) {
+				console.log(e);
 				try {
 					message = await channel.send({ embeds: [embed] });
 				} catch (e) {
-					return;
+					console.log(e);
 				}
 
 				details[2] = message.id;
 				await query(con, `UPDATE users SET ScoreChannels = "${details.join(`-`)}" WHERE ID = "${userIDs[i]}";`);
-				return;
+				continue;
 			}
 			
 			await message.edit({ embeds: [embed] });
-			return;
+			continue;
         } else { // New date, so new message
 			let channel, message;
-			channel = await client.channels.fetch(details[1]);
+			try {
+				channel = await client.channels.fetch(details[1]);
+			} catch (e) {
+				console.log(e);
+			}
+
 			try {
 				message = await channel.send({ embeds: [embed] });
 			} catch (e) {
-				return;
+				console.log(e);
+				continue;
 			}
             details[2] = message.id;
             details[3] = currentDate;
@@ -737,7 +785,7 @@ async function sortOutShards() {
 		try {
 			channel = await client.channels.fetch(details[1]);
 		} catch (e) {
-			// ...
+			console.log(e);
 		}
 		if (!channel) continue;
 

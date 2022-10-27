@@ -282,7 +282,7 @@ module.exports = {
                 // TODO - remove triple doubles +/-, fix turnovers per game, pFouls
                 let temp = {};
                 let keys = [`g`, `gamesPlayed`, `gamesStarted`, `mpg`, `fgp`, `ftp`, `tpp`, `rpg`, `apg`, `spg`, `bpg`, `turnovers`, `pFouls`, `ppg`, `points`, `fgm`, `tpm`, `fga`, `tpa`, `fta`, `ftm`, `offReb`, `defReb`];
-                let values = [6, 6, 7, 8, 11, 17, 14, 20, 21, 22, 23, 24, 25, 26, 26, 9, 12, 10, 13, 16, 15, 18, 19];
+                let values = [6,  6,              7,              8,     11,   17,     14,    20,    21,    22,    23,      24,          25,     26,     26,       9,    12,    10,    13,    16,    15,     18,       19];
                 for (var i = 0; i < keys.length; i++) {
                     /*if ([`turnovers`, `pFouls`].includes(keys[i])) {
                         temp[keys[i]] = parseFloat(p[values[i]]) * p[6];
@@ -376,8 +376,8 @@ module.exports = {
         x.fillText((details.source == `nba`) ? p.apg : p.ast, 205, 100 + 20);
         x.fillText((details.source == `nba`) ? p.bpg : p.blk, 300, 100 + 20);
         x.fillText((details.source == `nba`) ? p.spg : p.stl, 400, 100 + 20);
-        x.fillText((details.source == `nba`) ? (p.pFouls/p.gamesPlayed).toFixed(1) : p.pf, 495, 100 + 20);
-        x.fillText((details.source == `nba`) ? (p.turnovers/p.gamesPlayed).toFixed(1) : p.turnover, 590, 100 + 20);
+        x.fillText((details.source == `nba`) ? (p.pFouls).toFixed(1) : p.pf, 495, 100 + 20);
+        x.fillText((details.source == `nba`) ? (p.turnovers).toFixed(1) : p.turnover, 590, 100 + 20);
         x.fillText((details.source == `nba`) ? p.mpg : p.min, 685, 100 + 20);
 
         x.font = `25px WhitneyBold`;

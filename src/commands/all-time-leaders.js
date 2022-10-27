@@ -41,6 +41,9 @@ module.exports = {
             name: `Field Goals Attempted`,
             value: `FGA`
         }).addChoices({
+            name: `Field Goal Percentage`,
+            value: `FG_PCT`
+        }).addChoices({
             name: `Turnovers`,
             value: `TOV`
         }).addChoices({
@@ -50,6 +53,9 @@ module.exports = {
             name: `Three Pointers Attempted`,
             value: `FG3A`
         }).addChoices({
+            name: `Three Point Percentage`,
+            value: `FG3_PCT`
+        }).addChoices({
             name: `Personal Fouls`,
             value: `PF`
         }).addChoices({
@@ -58,6 +64,9 @@ module.exports = {
         }).addChoices({
             name: `Free Throws Attempted`,
             value: `FTA`
+        }).addChoices({
+            name: `Free Throw Percentage`,
+            value: `FT_PCT`
         }).setRequired(true)),
     
 	async execute(variables) {
@@ -83,6 +92,7 @@ module.exports = {
                     let leaders = json[i].rowSet;
                     let description = ``;
                     for (var j = 0; j < leaders.length; j++) {
+                        if ([`FG_PCT`, `FT_PCT`, `FG3_PCT`].includes(stat)) leaders[j][2] = (parseFloat(leaders[j][2]) * 100).toFixed(1);
                         description += `${j + 1}) \`${leaders[j][2]}\` -  **${leaders[j][1]}${(leaders[j][4] == `Y` ? `*` : ``)}**\n`;
                     }
                     description += `* - Active`;

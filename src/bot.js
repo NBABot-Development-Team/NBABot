@@ -1,16 +1,12 @@
 // Core variables
 const config = require(`./config.json`);
-let runningOriginalNBABot = config.runningOriginalNBABot; // Change this to false if running on your own bot
+let runningOriginalNBABot = config.runningOriginalNBABot;
 let runDatabase = config.runDatabase;
 
 // Libraries
 const Discord = require(`discord.js`);
 const fs = require(`fs`);
-const fetch = require(`node-fetch`);
 const mysql = require(`mysql`);
-const express = require(`express`);
-const http = require(`http`);
-const path = require(`path`);
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v9');
 
@@ -30,6 +26,16 @@ const randInt = require(`./methods/randint.js`);
 // Core Discord variables
 const client = new Discord.Client({ intents: [Discord.Intents.FLAGS.GUILDS, Discord.Intents.FLAGS.GUILD_MESSAGES] });
 
+// Sorting out command structure
+client.commands = new Discord.Collection();
+const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
+commandLoop: for (const file of commandFiles) {
+	let databaseInvolvedCommands = [`balance`, `bet`, `bets`, `claim`, `img-add`, `img-delete`, `img`, `imgs`, `leaderboard`, `rbet`, `reset-balance`, `settings`];
+	if (databaseInvolvedCommands.includes(file.split(`.`)[0]) && !runDatabase) continue commandLoop;
+	const command = require(`./commands/${file}`);
+	client.commands.set(command.data.name, command);
+}
+
 // Initialising mysql database
 let con;
 if (runDatabase) {
@@ -43,20 +49,11 @@ if (runDatabase) {
 	con.connect();
 }
 
-// Sorting out command structure
-client.commands = new Discord.Collection();
-const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
-commandLoop: for (const file of commandFiles) {
-	let databaseInvolvedCommands = [`balance`, `bet`, `bets`, `claim`, `img-add`, `img-delete`, `img`, `imgs`, `leaderboard`, `rbet`, `reset-balance`, `settings`];
-	if (databaseInvolvedCommands.includes(file.split(`.`)[0]) && !runDatabase) continue commandLoop;
-	const command = require(`./commands/${file}`);
-	client.commands.set(command.data.name, command);
-}
-
 client.on(`ready`, async () => {
 	module.exports = { con, client, runDatabase, shardID, sortOutShards };
 	clientReady = true;
 	logger.ready(`Ready!`);
+
 	updateActivity();
 	await sortOutShards();
 
@@ -118,7 +115,7 @@ async function updateAllServerCommands() {
 		});
 }
 
-client.on(`guildCreate`, async guild => {
+client.on(`guildCreate`, async guild => { // NBABot joins guild
 	const commands = [];
 	const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 
@@ -156,16 +153,10 @@ client.on(`guildCreate`, async guild => {
 		});
 });
 
+// On @NBABot message (mention)
 client.on(`messageCreate`, async message => {
-	// if (!message.content.startsWith(`nba`)) return;
-	let v2commands = [`boxscore`, `box`, `bs`, `b`, `compare-players`, `compare`, `news`, `player-info`, `player-stats`, `roster`, `schedule`, `scores`, `s`, `help`];
 	let args = message.content.toLowerCase().split(` `);
-
-	if (!args) return;
-	if (!args[0]) return;
-	if (!args[1]) return;
-
-	// Finding out if server has betting
+	if (!args?.[0] || !args?.[1]) return;
 
 	if (args[1].toLowerCase() == `update`) {
 		let msg = await message.channel.send(`Updating...`);
@@ -215,44 +206,23 @@ client.on(`messageCreate`, async message => {
 
 	}
 
-	if (args.length > 1) {
-		if (args[0].toLowerCase() == `nba` && v2commands.includes(args[1].toLowerCase())) {
-			let exists = false;
-			let commandsOnGuild = await message.guild.commands.fetch();
-			commandsOnGuild.map(async command => {
-				if (command.applicationId == (config.clientId)) {
-					exists = true;
-				}
-			});
-			console.log(exists);
-
-			if (!exists) {
-				// Tell them to update to v3
-				let embed = new Discord.MessageEmbed()
-					.setTitle(`NBABot v3 is out!`)
-					.setDescription(`For the upcoming 2022-23 NBA season, NBABot has been updated to support slash commands, among other features and performance improvements.\n**1) Update to v3 with \`nba update\`.\n2) You're done! Run commands like \`/help\` and \`/scores\`.**`)
-					.setColor(teamColors.NBA);
-
-				return await message.channel.send({ embeds: [embed] });
-			}
-		}
-	}
-
-	if (![`401649168948396032`, `234792150338895872`].includes(message.author.id)) return;
-
-	if (args[1].toLowerCase() == `post` && runningOriginalNBABot) {
-		const DiscordBotList = require(`dblapi.js`);
-		const dbl = new DiscordBotList(config.dbl);
-
-		let res = await client.shard.fetchClientValues(`guilds.cache.size`);
-		res = res.reduce((a, b) => a + b, 0);
-
-		await dbl.postStats(res);
-
-		return await message.channel.send(`Posted ${res} server count.`);
-	}
+	// Cutoff for admin-based commands
+	if (!config.adminIDs.includes(message.author.id)) return;
 
 	switch(args[1].toLowerCase()) {
+		case `post`:
+			if (!runningOriginalNBABot) return;
+			const DiscordBotList = require(`dblapi.js`);
+			const dbl = new DiscordBotList(config.dbl);
+
+			let res = await client.shard.fetchClientValues(`guilds.cache.size`);
+			res = res.reduce((a, b) => a + b, 0);
+
+			await dbl.postStats(res);
+
+			return await message.channel.send(`Posted ${res} server count.`);
+			break;
+		
 		case `eval`:
 			let response = eval(message.content.split(`@<${config.clientId}> eval`).join(``));
 			console.log(response);
@@ -264,10 +234,13 @@ client.on(`messageCreate`, async message => {
 			break;
 
 		case `update-odds`:
-			// @<> updateodds 20220930 GSW 110 WAS -200
+			// Format:
+			// @NBABot update-odds yyyymmdd GSW 110 WAS -200
 			if (args.length < 7) return await message.channel.send(`7 arguments required.`);
 
-			let odds = [args[4], args[6]];
+			let odds = [args[4], args[6]]; // [awayTeam, homeTeam]
+
+			// Checking for decimal odds to convert to US format
 			for (var i = 0; i < odds.length; i++) {
 				if (odds[i].includes(`.`)) {
 					odds[i] = parseFloat(odds[i]);
@@ -300,12 +273,14 @@ client.on(`messageCreate`, async message => {
 			break;
 
 		case `bet-stats`:
-			if (!args[2]) {
+			if (!args[2]) { // currentDate if not specified
 				delete require.cache[require.resolve(`./cache/today.json`)];
 				args[2] = require(`./cache/today.json`).links.currentDate;
 			}
+
 			let activeBetCount = await query(con, `SELECT COUNT(*) FROM bets WHERE d${args[2]} IS NOT NULL;`);
 			activeBetCount = activeBetCount[0][`COUNT(*)`];
+
 			return await message.channel.send(`${args[2]}: \`${activeBetCount}\``);
 			break;
 
@@ -365,23 +340,21 @@ client.on(`messageCreate`, async message => {
 			}
 
 			return await message.channel.send(str);
-			break;
-		
+			break;	
 	}
 });
 
 
-// Catching slash command
+// On / command
 client.on(`interactionCreate`, async interaction => {
 	if (!interaction.isCommand()) return;
 
 	const command = client.commands.get(interaction.commandName);
-
 	if (!command) return;
 
 	// Logging command contents
 	let offset = 12; // Converts logging stuff to NZ time, feel free to change this utc offset
-	let localTime = new Date(new Date().getTime() + offset * 60 * 60 * 1000);
+	let localTime = new Date(new Date().getTime() + offset * 3600000);
 
 	if (runDatabase) {
 		// Registering user on users database if not already
@@ -439,7 +412,7 @@ client.on(`interactionCreate`, async interaction => {
 
 		console.log(`[${currentStats.Total}][${localTime.toISOString()}][${interaction.guild.id}][${interaction.user.id}]: ${interaction.commandName}`);
 
-		if (interaction.commandName.includes(`-`)) {
+		if (interaction.commandName.includes(`-`)) { // commands like player-stats can't work as mysql columns
 			interaction.commandName = interaction.commandName.split(`-`).join(``);
 		}
 
@@ -452,7 +425,9 @@ client.on(`interactionCreate`, async interaction => {
 		}
 
 		await query(con, `UPDATE stats SET Total = ${currentStats.Total}, ${interaction.commandName} = ${currentStats[interaction.commandName]} WHERE Date = "${todayDate}";`);
-	} else console.log(`[${localTime.toISOString()}][${interaction.guild.id}][${interaction.user.id}]: ${interaction.commandName}`);
+	} else {
+		console.log(`[${localTime.toISOString()}][${interaction.guild.id}][${interaction.user.id}]: ${interaction.commandName}`)
+	}
 
 	let guild = await query(con, `SELECT * FROM guilds WHERE ID = "${interaction.guild.id}";`), guildExists = true;
 	if (!guild) guildExists = false;
@@ -468,7 +443,8 @@ client.on(`interactionCreate`, async interaction => {
 	let betting = (guild.Betting == `y`) ? true : false;
 
 	let ad = null;
-	// Run command
+
+	// Sorting out whether ads/betting is allowed
 	if (runDatabase) {
 		let user = await query(con, `SELECT * FROM users WHERE ID = "${interaction.user.id}";`);
 		user = user[0];
@@ -515,7 +491,6 @@ client.on(`interactionCreate`, async interaction => {
 		if (user.Betting == `n` && config.bettingCommands.includes(interaction.commandName)) {
 			return await interaction.reply(`Betting is disabled for this user. Change this with \`/settings betting\`.`);
 		}
-
 		if (user.Betting == `n`) betting = false;
 
 		try {
@@ -539,6 +514,7 @@ client.on(`interactionCreate`, async interaction => {
 // Logging in
 client.login(config.token);
 
+// process events
 process.on("uncaughtException", (err) => {
 	const errorMsg = err.stack.replace(new RegExp(`${__dirname}/`, "g"), "./");
 	logger.error(`Uncaught Exception: ${errorMsg}`);
@@ -558,17 +534,18 @@ process.on(`exit`, () => {
 	con.end();
 });
 
+let shardID;
+process.on(`message`, message => {
+	if (!message.type) return false;
+	if (message.type == `shardId`) shardID = message.data.shardId;
+});
+
 // Updating cache
 const methods = require(`./methods/update-cache.js`);
-const { donatorScores } = require('./methods/update-cache.js');
-const { registerCustomQueryHandler } = require('puppeteer');
 
 // Cache and updating stuff
 methods.updateDate();
 setInterval(methods.updateDate, 1000 * 60 * 5);
-
-// methods.updateOdds();
-// setInterval(methods.updateOdds, 1000 * 60 * 60);
 
 methods.updateScores();
 setInterval(methods.updateScores, 1000 * 20);
@@ -754,6 +731,7 @@ async function DonatorScores() {
 				channel = await client.channels.fetch(details[1]);
 			} catch (e) {
 				console.log(e);
+				continue;
 			}
 
 			try {
@@ -769,7 +747,7 @@ async function DonatorScores() {
     } 
 }
 
-async function sortOutShards() {
+async function sortOutShards() { // Assigning shard locations to 
 	let users = await query(con, `SELECT * FROM users WHERE Donator = "f";`);
 	for (var i = 0; i < users.length; i++) {
 		let user = users[i];
@@ -792,20 +770,3 @@ async function sortOutShards() {
 		await query(con, `UPDATE users SET ScoreChannels = "${details.join(`-`)}" WHERE ID = "${user.ID}"`);
 	}
 }
-
-let shardID;
-process.on(`message`, message => {
-	if (!message.type) return false;
-
-	if (message.type == `shardId`) {
-		shardID = message.data.shardId;
-	}
-
-	// Direct donator scores
-	if (message.data.shardId == 0) {
-		// DonatorScores();
-		// setInterval(DonatorScores, 1000 * 60);
-	}
-});
-
-// server.listen(port, () => console.log(`Listening on port ${port}`));

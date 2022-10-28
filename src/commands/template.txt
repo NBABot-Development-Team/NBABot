@@ -1,11 +1,11 @@
 // Libraries
-const { SlashCommandBuilder } = require('@discordjs/builders');
+const { SlashCommandBuilder } = require(`@discordjs/builders`);
 const Discord = require(`discord.js`);
 
 module.exports = {
 	data: new SlashCommandBuilder()
-		.setName('command_name')
-		.setDescription('description'),
+		.setName(`command_name`)
+		.setDescription(`description`),
     
 	async execute(variables) {
 		let { interaction } = variables;

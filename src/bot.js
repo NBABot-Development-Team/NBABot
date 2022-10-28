@@ -718,12 +718,10 @@ async function DonatorScores() {
     // Sending/updating messages
     channelLoop: for (var i = 0; i < channels.length; i++) {
         let details = channels[i].split(`-`); // server-channel-msg-yyymmdd-shard
-		if (details[0] == `1033476893225275473`) console.log(`${details} ${shardID}`);
 		if (details[4].toString() != shardID.toString()) {
 			continue channelLoop;
 		}
         if (details[3] == currentDate) { // Last message is same day, so no change = update
-			console.log(`Updating ${details[2]} in ${details[1]} in ${details[0]} for ${details[3]}`);
 			let channel;
 			try {
 				channel = await client.channels.fetch(details[1]);

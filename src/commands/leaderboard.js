@@ -36,9 +36,6 @@ module.exports = {
 
 		let i = 0, authorObject, authorPosition;
 		userLoop: for (var user of users) {
-			console.log(i);
-			// userArray.push(user);
-			// Finding message author position
 			let username = await client.users.fetch(user.ID);
 			if (!username) continue userLoop;
 			
@@ -46,17 +43,6 @@ module.exports = {
 			if (i <= 10) {
 				embed.addField(`${i}) @${username.username}#${username.discriminator} - \`$${user.Balance.toFixed(2).toString()}\``, `_Betting record:_ \`${user.Correct} - ${user.Wrong}\` (${convertToPercentage(user.Correct, user.Correct + user.Wrong)})`);
 			} else break;
-
-			/*if (user.ID == interaction.user.id) {
-				if (i > 10) {
-					embed.addField(`...\n${i}) @${username.username} - \`$${user.Balance.toFixed(2).toString()}\``, `_Betting record:_ \`${user.Correct} - ${user.Wrong}\` (${convertToPercentage(user.Correct, user.Correct + user.Wrong)})`);
-					break userLoop;
-				}
-				authorObject = user;
-				authorPosition = i;
-			}
-
-			if (authorObject && i > 10) break userLoop; */
 		}
 
 		// SELECT * FROM ( SELECT ID, Balance, Correct, Wrong, @row := @row + 1 AS serial_num FROM (SELECT * FROM users WHERE LOCATE("547294716606021643", Guilds) > 1 ) temp2 CROSS JOIN (SELECT @row := 0) r ORDER BY Balance DESC ) tmp WHERE ID = "401649168948396032";

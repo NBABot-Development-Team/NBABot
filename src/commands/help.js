@@ -5,28 +5,62 @@ const Discord = require(`discord.js`);
 // Assets
 const teamColors = require(`../assets/teams/colors.json`);
 
+// Methods
+const query = require(`../methods/database/query.js`);
+
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName(`help`)
 		.setDescription(`NBABot's commands and other useful info`),
 
 	async execute(variables) {
-		let { interaction, ad } = variables;
+		let { interaction, ad, con, betting } = variables;
 
-		const commands = {
-			nba: [`scores`, `boxscore`, `player-stats`, `player-info`, `compare-players`, `standings`, `schedule`, `roster`, `team-info`, `team-stats`, `teams`, `news`, `transactions`, `all-time-leaders`, `league-leaders`, `franchise-leaders`],
-			betting: [`bet`, `bets`, `balance`, `bets`, `claim`, `leaderboard`, `odds`, `rbet`, `reset-balance`, `weekly`],
-			other: [`bot-stats`, `help`, `img-add`, `img-delete`, `img`, `imgs`, `ping`, `settings`, `vote`, `auto-scores`, `donate`, `ad-free-servers`],
+		delete require.cache[require.resolve(`../config.json`)];
+		const config = require(`../config.json`);
+
+		const commands = config.commands;
+
+		let ordered = {};
+
+		for (var key in commands) {
+			if (!betting && key == `betting`) continue;
+
+			let sums = [];
+			for (var i = 0; i < commands[key].length; i++) {
+				let command = commands[key][i];
+				if (command.includes(`-`)) command = command.split(`-`).join(``);
+
+				let sum;
+				try {
+					sum = await query(con, `SELECT SUM(${command}) AS sum FROM stats;`);
+				} catch (e) {
+					sum = 0;
+				}
+				if (sum) sum = sum[0].sum;
+				else sum = 0;
+
+				sums.push([commands[key][i], sum]);
+			}
+			// [[scores, 123], [playerstats, 456]]
+			sums = sums.sort((a, b) => {
+				return b[1] - a[1];
+			});
+			if (!ordered[key]) ordered[key] = [];
+			for (var i = 0; i < sums.length; i++) {
+				ordered[key].push(sums[i][0]);
+			}
 		}
 
 		let embed = new Discord.MessageEmbed()
 			.setTitle(`Help for NBABot`)
 			.setColor(teamColors.NBA)
 			.setDescription(`Type / and select NBABot to see NBABot's commands.\n\n**Further questions?** Join the support server below or contact chig#4519 directly.\n**Want to support NBABot?** Donation via patreon below would be immensely appreciated.`)
-			.addField(`NBA Commands`, `\`/${commands.nba.join(`\` \`/`)}\``)
-			.addField(`Betting Commands`, `\`/${commands.betting.join(`\` \`/`)}\``)
-			.addField(`Other Commands`, `\`/${commands.other.join(`\` \`/`)}\``)
+			.addField(`NBA Commands`, `\`/${ordered.nba.join(`\` \`/`)}\``)
+			.addField(`Other Commands`, `\`/${ordered.other.join(`\` \`/`)}\``)
 			.setFooter({ text: `NBABot, made by chig#4519 and freejstn#0666` });
+
+		if (betting && ordered.betting) embed.addField(`Betting Commands (Note: NBABot's simulated betting system uses NO real money/currency.)`, `\`/${ordered.betting.join(`\` \`/`)}\``);
 
 		const row = new Discord.MessageActionRow()
 			.addComponents(
@@ -51,7 +85,7 @@ module.exports = {
 					.setStyle(`LINK`),
 
 				new Discord.MessageButton()
-					.setURL(`https://github.com/EliotChignell/NBABot`)
+					.setURL(`https://github.com/NBABot-Development-Team/NBABot`)
 					.setLabel(`GitHub`)
 					.setStyle(`LINK`)
 			);

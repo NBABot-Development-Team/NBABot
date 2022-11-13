@@ -38,14 +38,11 @@ module.exports = {
                 description.push(`\`${v}\`: [Link](${images[v]})`);
             });
 
-        console.log(`Guild: ${interaction.guild.id}, Images: ${description.length}, Length: ${description.join(`, `).length}`);
-
         if (description.join(`, `).length > 4000) {
             let descriptions = []; currentArray = [];
             descriptionLoop: for (var i = 0; i < description.length; i++) {
                 let tempArray = [...currentArray];
                 tempArray.push(description[i]);
-                console.log(`currentArray: ${currentArray.length}, ${currentArray.join(`, `).length}, tempArray: ${tempArray.length}`)
                 if (tempArray.join(`, `).length < 4000) {
                     currentArray.push(description[i]);
                     if (i == description.length - 1) {
@@ -53,7 +50,6 @@ module.exports = {
                         break descriptionLoop;
                     }
                 } else {
-                    console.log(currentArray.join(`, `).length);
                     descriptions.push(currentArray.join(`, `));
                     currentArray = [description[i]];
                 }
@@ -69,18 +65,14 @@ module.exports = {
                 allEmbeds.push(e);
             }
 
-            console.log(allEmbeds.length);
-
             await interaction.editReply({ embeds: [allEmbeds[0]] });
 
             for (var i = 1; i < allEmbeds.length; i++) {
-                console.log(i);
                 await interaction.channel.send({ embeds: [allEmbeds[i]] });
             }
             return;
         } else description = description.join(`, `); 
         
-        console.log(description);
         embed.setDescription(description); // Hopefully not larger than 4096
 
         return await interaction.editReply({ embeds: [embed] });

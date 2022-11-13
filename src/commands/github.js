@@ -14,7 +14,7 @@ module.exports = {
 		let { interaction, ad } = variables;
 
         let embed = new Discord.MessageEmbed()
-            .addField(`NBABot's GitHub:`, `[https://github.com/EliotChignell/NBABot](https://github.com/EliotChignell/NBABot)`)
+            .addField(`NBABot's GitHub:`, `[https://github.com/NBABot-Development-Team/NBABot](https://github.com/NBABot-Development-Team/NBABot)`)
             .setColor(teamColors.NBA);
 
 		if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });

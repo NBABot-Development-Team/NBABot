@@ -27,6 +27,7 @@ module.exports = async (date, userSpecified, teamSpecified) => {
                 json = require(`../cache/${date}/scoreboard.json`);
             } else {
                 if (fs.existsSync(`./cache/${date}/scoreboard.json`)) {
+                    delete require.cache[require.resolve(`../cache/${date}/scoreboard.json`)];
                     json = require(`../cache/${date}/scoreboard.json`);
                 } else {
                     json = await getJSON(`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json`);
@@ -80,17 +81,11 @@ module.exports = async (date, userSpecified, teamSpecified) => {
 
                         betsClaimed++;
                         
-                        console.log(`1: ${bet}`);
                         bet.splice(j, 1);
-                        console.log(`2: ${bet}`);
 
                         break gameLoop;
                     }
-
-                    console.log(j);
                 }
-
-                console.log(`abc`);
 
                 if (!description) continue userLoop;
 

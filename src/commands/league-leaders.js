@@ -8,6 +8,7 @@ const fetch = require(`node-fetch`);
 // Assets
 const teamColors = require(`../assets/teams/colors.json`);
 const teamEmojis = require(`../assets/teams/emojis.json`);
+const teamNames = require(`../assets/teams/names.json`);
 
 // Methods
 const formatSeason = require(`../methods/format-season.js`);
@@ -17,56 +18,80 @@ module.exports = {
 		.setName(`league-leaders`)
 		.setDescription(`Get the current or past leaders of a specific statistic.`)
         .addStringOption(option => option.setName(`stat`).setDescription(`Which statistic you want to find league leaders for.`).addChoices({
-            name: `Points`,
+            name: `Points (PTS)`,
             value: `PTS`
         }).addChoices({
-            name: `Assists`,
+            name: `Assists (AST)`,
             value: `AST`
         }).addChoices({
-            name: `Steals`,
-            value: `STL`
-        }).addChoices({
-            name: `Offensive Rebounds`,
+            name: `Offensive Rebounds (OREB)`,
             value: `OREB`
         }).addChoices({
-            name: `Defensive Rebounds`,
+            name: `Defensive Rebounds (DREB)`,
             value: `DREB`
         }).addChoices({
-            name: `Total Rebounds`,
+            name: `Total Rebounds (REB)`,
             value: `REB`
         }).addChoices({
-            name: `Blocks`,
+            name: `Steals (STL)`,
+            value: `STL`
+        }).addChoices({
+            name: `Blocks (BLK)`,
             value: `BLK`
         }).addChoices({
-            name: `Field Goals Made`,
-            value: `FGM`
-        }).addChoices({
-            name: `Field Goals Attempted`,
-            value: `FGA`
-        }).addChoices({
-            name: `Field Goal Percentage`,
-            value: `FG_PCT`
-        }).addChoices({
-            name: `Turnovers`,
+            name: `Turnovers (TOV)`,
             value: `TOV`
         }).addChoices({
-            name: `Three Pointers Made`,
+            name: `Field Goals Made (FGM)`,
+            value: `FGM`
+        }).addChoices({
+            name: `Field Goals Attempted (FGA)`,
+            value: `FGA`
+        }).addChoices({
+            name: `Field Goal Percentage (FG%)`,
+            value: `FG_PCT`
+        }).addChoices({
+            name: `Three Pointers Made (3PM)`,
             value: `FG3M`
         }).addChoices({
-            name: `Three Pointers Attempted`,
+            name: `Three Pointers Attempted (3PA)`,
             value: `FG3A`
         }).addChoices({
-            name: `Three Point Percentage`,
+            name: `Three Point Percentage (3P%)`,
             value: `FG3_PCT`
         }).addChoices({
-            name: `Free Throws Made`,
+            name: `Free Throws Made (FTM)`,
             value: `FTM`
         }).addChoices({
-            name: `Free Throws Attempted`,
+            name: `Free Throws Attempted (FTA)`,
             value: `FTA`
         }).addChoices({
-            name: `Free Throw Percentage`,
+            name: `Free Throw Percentage (FT%)`,
             value: `FT_PCT`
+        }).addChoices({
+            name: `Triple Doubles`,
+            value: `TD3`
+        }).addChoices({
+            name: `Plus Minus (+/-)`,
+            value: `PLUS_MINUS`
+        }).addChoices({
+            name: `Fantasy Points (FP)`,
+            value: `NBA_FANTASY_PTS`
+        }).addChoices({
+            name: `Assist/Turnover Ratio (AST/TO)`,
+            value: `AST_TO`
+        }).addChoices({
+            name: `Effective Field Goal Percentage (EFG%)`,
+            value: `EFG_PCT`
+        }).addChoices({
+            name: `True Shooting Percentage (TS%)`,
+            value: `TS_PCT`
+        }).addChoices({
+            name: `Usage Percentage (USG%)`,
+            value: `USG_PCT`
+        }).addChoices({
+            name: `Player Impact Estimate (PIE)`,
+            value: `PIE`
         }).setRequired(true))
         .addStringOption(option => option.setName(`mode`).setDescription(`Whether you want to find per-game or total leaders.`).addChoices({
             name: `Per Game`,
@@ -106,8 +131,11 @@ module.exports = {
         if ([`FG_PCT`, `FT_PCT`, `FG3_PCT`].includes(stat)) mode = `Totals`;
 
         await interaction.deferReply();
+
+        let type = `Base`;
+        if ([`AST_TO`, `OREB_PCT`, `DREB_PCT`, `EFG_PCT`, `TS_PCT`, `USG_PCT`, `PACE`, `PIE`, `POSS`].includes(stat)) type = `Advanced`;
         
-        fetch(`https://stats.nba.com/stats/leagueleaders?ActiveFlag=&LeagueID=00&PerMode=${mode}&Scope=S&Season=${season}-${(parseInt(season) + 1).toString().substring(2, 4)}&SeasonType=${seasonType}&StatCategory=${stat}`, {
+        fetch(`https://stats.nba.com/stats/leaguedashplayerstats?College=&Conference=&Country=&DateFrom=&DateTo=&Division=&DraftPick=&DraftYear=&GameScope=&GameSegment=&Height=&LastNGames=0&LeagueID=&Location=&MeasureType=${type}&Month=0&OpponentTeamID=0&Outcome=&PORound=&PaceAdjust=N&PerMode=${mode}&Period=0&PlayerExperience=&PlayerPosition=&PlusMinus=N&Rank=N&Season=${season}-${(parseInt(season) + 1).toString().substring(2, 4)}&SeasonSegment=&SeasonType=${seasonType}&ShotClockRange=&StarterBench=&TeamID=&TwoWay=&VsConference=&VsDivision=&Weight=`, {
             headers: require(`../config.json`).headers
         }).then(async res => {
             let json = await res.text();
@@ -117,22 +145,30 @@ module.exports = {
                 .setTitle(`${teamEmojis.NBA} __${season}-${parseInt(season) + 1} ${seasonType.split(`+`).join(` `)} ${(mode == `PerGame`) ? `Per Game` : `Total`} League Leaders for ${stat}:__`)
                 .setColor(teamColors.NBA);
 
-            let leaders = json.resultSet.rowSet;
+            let leaders = json.resultSets[0].rowSet;
             let max = 20;
             let description = ``;
 
             // Locating where stat is
-            let statPosition;
-            for (var i = 0; i < json.resultSet.headers.length; i++) {
-                if (json.resultSet.headers[i] == stat.toUpperCase()) {
+            let statPosition, statRankingPosition;
+            for (var i = 0; i < json.resultSets[0].headers.length; i++) {
+                if (json.resultSets[0].headers[i] == stat.toUpperCase()) {
                     statPosition = i;
                 }
+                if (json.resultSets[0].headers[i] == `${stat.toUpperCase()}_RANK`) {
+                    statRankingPosition = i;
+                }
             }
-            if (!statPosition) return await interaction.editReply(`An error occurred finding that stat.`);
+            if (!statPosition || !statRankingPosition) return await interaction.editReply(`An error occurred finding that stat.`);
+
+            // Sorting by stat ranking
+            leaders.sort((a, b) => {
+                return a[statRankingPosition] - b[statRankingPosition];
+            });
 
             for (var i = 0; i < max; i++) {
-                if ([`FG_PCT`, `FT_PCT`, `FG3_PCT`].includes(stat)) leaders[i][statPosition] = (parseFloat(leaders[i][statPosition]) * 100).toFixed(1);
-                description += `${i + 1}) \`${leaders[i][statPosition]}\` - **${leaders[i][2]}** ${teamEmojis[leaders[i][3]]}\n`
+                if (stat.includes(`PCT`)) leaders[i][statPosition] = (parseFloat(leaders[i][statPosition]) * 100).toFixed(1);
+                description += `\`${i < 9 ? `0` : ``}${i + 1})\` \`${leaders[i][statPosition]}\` - **${leaders[i][1]}** ${teamEmojis[teamNames[leaders[i][3]]]}\n`
             }
 
             embed.setDescription(description);

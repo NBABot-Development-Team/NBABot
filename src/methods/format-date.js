@@ -40,10 +40,8 @@ module.exports = async (date, con = null, id = null) => {
 			// Checking for user date format
 			let dateFormat = await query(con, `SELECT * FROM users WHERE ID = '${id}';`);
 			dateFormat = dateFormat[0].DateFormat;
-			console.log(`dateformat: ${dateFormat}`);
 			if (dateFormat == `i`) { // Switching month and date if international
 				date = `${date.split(`/`)[1]}/${date.split(`/`)[0]}/${date.split(`/`)[2]}`;
-				console.log(`f-1: ${date}`);
 			}
 		}
 
@@ -51,7 +49,6 @@ module.exports = async (date, con = null, id = null) => {
 		if (parseInt(date.split(`/`)[0]) > 12 || parseInt(date.split(`/`)[1]) > 31) return;
 
 		// Finally returning the date in yyyymmdd format
-		console.log(`f: ${date.split('/')[2]}${date.split('/')[0]}${date.split('/')[1]}`);
 		resolve(`${date.split('/')[2]}${date.split('/')[0]}${date.split('/')[1]}`);
 	});
 };

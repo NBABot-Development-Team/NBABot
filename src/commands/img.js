@@ -26,8 +26,6 @@ module.exports = {
         if (images.length == 0) imagesExist = false;
         if (!imagesExist) return await interaction.reply(`Your server has no images. Add them with \`/img-add\`.`);
 
-        console.log(images[0].Data);
-
         images = JSON.parse(images[0].Data);
         if (images[name.toLowerCase()]) {
             let embed = new Discord.MessageEmbed()

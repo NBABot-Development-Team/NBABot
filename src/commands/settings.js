@@ -185,13 +185,12 @@ module.exports = {
         
                 rest.put(Routes.applicationGuildCommands(config.clientId, interaction.guild.id), { body: commands })
                     .then(async () => {
-                        console.log('Successfully registered application commands for guild ${message.guild.id}.');
+                        console.log(`Successfully registered application commands for guild ${interaction.guild.id}.`);
                         
                         let version = await query(con, `SELECT Version FROM guilds WHERE ID = "current";`);
                         version = version[0].Version;
-                        console.log(version);
                         let guild = await query(con, `SELECT * FROM guilds WHERE ID = "${interaction.guild.id}";`), guildExists = true;
-                        console.log(guild);
+                        
                         if (!guild) guildExists = false;
                         else if (guild.length == 0) guildExists = false;
     

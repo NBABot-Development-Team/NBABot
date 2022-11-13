@@ -185,7 +185,6 @@ module.exports = {
 
             // Found a certain possibility
             details = { source: location[0], id: Object.keys(possible[location[0]])[location[1]], name: names[location[0]][Object.keys(possible[location[0]])[location[1]]] };
-            console.log(season);
             if (!season) {
                 season = lastPlayed[location[0]][Object.keys(possible[location[0]])[location[1]]];
             }
@@ -251,7 +250,7 @@ module.exports = {
                         }
                     }
 
-                    if (!foundSeason) return await interaction.reply(`Could not find playoff stats for \`${details.name}\` in the \`${season}-${parseInt(season + 1)}\` season.`);
+                    if (!foundSeason) return await interaction.editReply(`Could not find playoff stats for \`${details.name}\` in the \`${season}-${parseInt(season + 1)}\` season.`);
  
 
                     /*p = json.league.standard.stats.latest;

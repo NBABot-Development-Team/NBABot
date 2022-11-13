@@ -1,5 +1,5 @@
 // Core variables
-const config = require(`./config.json`);
+let config = require(`./config.json`);
 let runningOriginalNBABot = config.runningOriginalNBABot;
 let runDatabase = config.runDatabase;
 
@@ -84,8 +84,10 @@ function updateCommands(ID) {
 		commandLoop: for (const file of commandFiles) {
 			let databaseInvolvedCommands = [`balance`, `bet`, `bets`, `claim`, `img-add`, `img-delete`, `img`, `imgs`, `leaderboard`, `rbet`, `reset-balance`, `settings`];
 			if (databaseInvolvedCommands.includes(file.split(`.`)[0]) && !runDatabase) continue commandLoop;
-			let bettingCommands = [`balance`, `bet`, `bets`, `claim`, `leaderboard`, `odds`, `rbet`, `reset-balance`, `weekly`];
+
+			let bettingCommands = config.commands.betting;
 			if (guildResult.Betting == `n` && bettingCommands.includes(file.split(`.`)[0])) continue commandLoop;
+			
 			const command = require(`./commands/${file}`);
 			commands.push(command.data.toJSON());
 		}
@@ -121,7 +123,6 @@ client.on(`guildCreate`, async guild => { // NBABot joins guild
 
 	let version = await query(con, `SELECT Version FROM guilds WHERE ID = "current";`);
 	version = version[0].Version;
-	console.log(version);
 	let guildResult = await query(con, `SELECT * FROM guilds WHERE ID = "${guild.id}";`), guildExists = true;
 	if (!guildResult) guildExists = false;
 	else if (guildResult.length == 0) guildExists = false;
@@ -138,7 +139,7 @@ client.on(`guildCreate`, async guild => { // NBABot joins guild
 		let databaseInvolvedCommands = [`balance`, `bet`, `bets`, `claim`, `img-add`, `img-delete`, `img`, `imgs`, `leaderboard`, `rbet`, `reset-balance`, `settings`];
 		if (databaseInvolvedCommands.includes(file.split(`.`)[0]) && !runDatabase) continue commandLoop;
 
-		let bettingCommands = [`balance`, `bet`, `bets`, `claim`, `leaderboard`, `odds`, `rbet`, `reset-balance`, `weekly`];
+		let bettingCommands = config.commands.betting;
 		if (guildResult.Betting == `n` && bettingCommands.includes(file.split(`.`)[0])) continue commandLoop;
 
 		const command = require(`./commands/${file}`);
@@ -149,7 +150,7 @@ client.on(`guildCreate`, async guild => { // NBABot joins guild
 
 	rest.put(Routes.applicationGuildCommands(config.clientId, guild.id), { body: commands })
 		.then(async () => {
-			console.log('Successfully registered application commands for guild ${message.guild.id}.');
+			console.log(`Successfully registered application commands for guild ${guild.id}.`);
 		});
 });
 
@@ -182,7 +183,7 @@ client.on(`messageCreate`, async message => {
 			let databaseInvolvedCommands = [`balance`, `bet`, `bets`, `claim`, `img-add`, `img-delete`, `img`, `imgs`, `leaderboard`, `rbet`, `reset-balance`, `settings`];
 			if (databaseInvolvedCommands.includes(file.split(`.`)[0]) && !runDatabase) continue commandLoop;
 
-			let bettingCommands = [`balance`, `bet`, `bets`, `claim`, `leaderboard`, `odds`, `rbet`, `reset-balance`, `weekly`];
+			let bettingCommands = config.commands.betting;
 			if (guild.Betting == `n` && bettingCommands.includes(file.split(`.`)[0])) continue commandLoop;
 			
 			const command = require(`./commands/${file}`);
@@ -341,19 +342,45 @@ client.on(`messageCreate`, async message => {
 
 			return await message.channel.send(str);
 			break;	
+
+		case `query`:
+			args.shift(); args.shift();
+			args = args.join(` `);
+
+			let q;
+			try {
+				q = await query(con, args);
+			} catch (e) {
+				return await message.channel.send(e);
+			}
+			return await message.channel.send(`\`\`\`json\n${JSON.stringify(q)}\`\`\``);
+			break;
+
+		case `claim`:
+			let date = args?.[2];
+			if (!date) return;
+			if (!parseInt(date) || date.length != 8) return;
+
+			await claimBets(date);
+			return await message.channel.send(`Done`);
+			break;
 	}
 });
 
 
 // On / command
 client.on(`interactionCreate`, async interaction => {
+	// Refreshing config.json
+	delete require.cache[require.resolve(`./config.json`)];
+	config = require(`./config.json`);
+
 	if (!interaction.isCommand()) return;
 
 	const command = client.commands.get(interaction.commandName);
 	if (!command) return;
 
-	// Logging command contents
-	let offset = 12; // Converts logging stuff to NZ time, feel free to change this utc offset
+	// Finding current time
+	let offset = 13; // Converts logging stuff to NZ time, feel free to change this utc offset
 	let localTime = new Date(new Date().getTime() + offset * 3600000);
 
 	if (runDatabase) {
@@ -361,7 +388,12 @@ client.on(`interactionCreate`, async interaction => {
 		let user = await getUser(con, `users`, interaction.user.id), userExists = true;
 		if (!user) userExists = false;
 		else if (user.length == 0) userExists = false;
-		if (!userExists) await createUser(con, `users`, interaction.user.id);
+		if (!userExists) {
+			let totalCount = await query(con, `SELECT COUNT(*) FROM users;`);
+			totalCount = totalCount[0][`COUNT(*)`];
+			console.log(`[${totalCount}] Creating user ${interaction.user.id}`);
+			await createUser(con, `users`, interaction.user.id);
+		}
 		
 		// Registering user on bets database if not already
 		let bets = await getUser(con, `bets`, interaction.user.id), betsExists = true;
@@ -405,7 +437,11 @@ client.on(`interactionCreate`, async interaction => {
 				currentStats[key] = 0;
 			}
 
-			await query(con, `INSERT INTO stats VALUES ("${todayDate}", 0${extraStr});`);
+			try {
+				await query(con, `INSERT INTO stats VALUES ("${todayDate}", 0${extraStr});`);
+			} catch (e) {
+				// ...
+			}
 		} else currentStats = currentStats[0];
 
 		currentStats.Total++;
@@ -419,7 +455,12 @@ client.on(`interactionCreate`, async interaction => {
 		if (currentStats[interaction.commandName]) {
 			currentStats[interaction.commandName]++;
 		} else {
-			await query(con, `ALTER TABLE stats ADD COLUMN ${interaction.commandName} MEDIUMINT;`);
+			try {
+				await query(con, `ALTER TABLE stats ADD COLUMN ${interaction.commandName} MEDIUMINT;`);
+			} catch (e) {
+				// ...
+			}
+
 			await query(con, `UPDATE stats SET ${interaction.commandName} = 0 WHERE ${interaction.commandName} IS NULL;`);
 			currentStats[interaction.commandName] = 1;
 		}
@@ -473,7 +514,7 @@ client.on(`interactionCreate`, async interaction => {
 				console.log(`Unknown channel!`);
 				channel = null;
 			}
-			if (channel && guild.BettingChannel != interaction.channel.id && config.bettingCommands.includes(interaction.commandName)) {
+			if (channel && guild.BettingChannel != interaction.channel.id && config.commands.betting.includes(interaction.commandName)) {
 				return await interaction.reply(`Betting is only enabled in <#${guild.BettingChannel}>. Use \`/settings betting-channel\` to change this.`);
 			}
 		}
@@ -485,10 +526,10 @@ client.on(`interactionCreate`, async interaction => {
 		}
 
 		// Checking for betting disabled for server or user
-		if (!betting && config.bettingCommands.includes(interaction.commandName)) {
+		if (!betting && config.commands.betting.includes(interaction.commandName)) {
 			return await interaction.reply(`Betting is disabled in this server.`);
 		}
-		if (user.Betting == `n` && config.bettingCommands.includes(interaction.commandName)) {
+		if (user.Betting == `n` && config.commands.betting.includes(interaction.commandName)) {
 			return await interaction.reply(`Betting is disabled for this user. Change this with \`/settings betting\`.`);
 		}
 		if (user.Betting == `n`) betting = false;
@@ -542,6 +583,7 @@ process.on(`message`, message => {
 
 // Updating cache
 const methods = require(`./methods/update-cache.js`);
+const claimBets = require('./methods/claim-bets');
 
 // Cache and updating stuff
 methods.updateDate();
@@ -597,10 +639,7 @@ async function DonatorScores() {
 		let details = channels[i].split(`-`);
 		if (details[4].toString() == shardID.toString()) validChannels++; 
 	}
-	if (validChannels == 0) {
-		// console.log(`${shardID.toString()} - no valid channels!`);
-		return;
-	}
+	if (validChannels == 0) return;
 
     // Finding currentDate
     delete require.cache[require.resolve(`./cache/today.json`)];

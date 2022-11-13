@@ -39,7 +39,7 @@ client.on(`ready`, async () => {
     News();
     // Injuries();
 
-    setInterval(Scores, 1000 * 60 * 20);
+    setInterval(Scores, 1000 * 60 * 10);
     setInterval(Transactions, 1000 * 60 * 5);
     setInterval(News, 1000 * 60 * 60);
     // setInterval(Injuries, 1000 * 60 * 5);
@@ -85,14 +85,18 @@ async function Transactions() {
     }
 
     let channel = await client.channels.fetch(config.transactionChannel);
-    await channel.send({ embeds: [embed] });
+    let message = await channel.send({ embeds: [embed] });
+    try {
+        await message.crosspost();
+    } catch (e) {
+        // ...
+    }
 }
 
 // Every 20 minutes
 async function Scores() {
     let lastEdited = await getValue(con, `scores_games_finished`, `Date`, `lastedit`);
     lastEdited = parseInt(lastEdited.Finished);
-    console.log(`lastedit difference: ${new Date().getTime() - 1000 * 60 * 20} ${lastEdited}`);
 
     delete require.cache[require.resolve(`./cache/today.json`)];
     let currentDate = require(`./cache/today.json`).links.currentDate;
@@ -100,7 +104,6 @@ async function Scores() {
     let currentDateObject = new Date(parseInt(currentDate.substring(0, 4)), parseInt(currentDate.substring(4, 6)) - 1, parseInt(currentDate.substring(6, 8)));
     let beforeDateObject = new Date(currentDateObject.getTime() - 86400000);
     let beforeDate = beforeDateObject.toISOString().substring(0, 10).split(`-`).join(``);
-    console.log(beforeDate);
 
     if (new Date().getTime() - 1000 * 60 * 20 < lastEdited) return;
 
@@ -155,6 +158,10 @@ async function Scores() {
             b = b?.scoreboard;
         }
 	}
+
+    /* temp
+    b = await getJSON(`https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json`);
+    b = b?.scoreboard; */
 
     if (!b) return;
     if (!b.games) return;
@@ -243,12 +250,17 @@ async function Scores() {
         await query(con, `UPDATE scores_games_finished SET Finished = "y" WHERE Date = "${currentDate}";`);
     } else await query(con, `UPDATE scores_games_finished SET Finished = "n" WHERE Date = "${currentDate}";`);
 
-    console.log(`About to send/edit, createMessage: ${createMessage}`);
     if (createMessage) {
         let channel = await client.channels.fetch(config.scoreChannel);
         let message = await channel.send({ embeds: [embed] });
+        try {
+            await message.crosspost();
+        } catch (e) {
+            // ...
+        }
+
         await query(con, `INSERT INTO scores_messages VALUES ('${currentDate}', '${config.nbaGuild}-${config.scoreChannel}-${message.id}');`);
-        await query(con, `UPDATE TABLE scores_games_finished SET Finished = "${new Date().getTime()}" WHERE Date = "lastedit";`);
+        await query(con, `UPDATE scores_games_finished SET Finished = "${new Date().getTime()}" WHERE Date = "lastedit";`);
     } else {
         try {
             let details = await getValue(con, `scores_messages`, `Date`, currentDate);
@@ -377,6 +389,11 @@ async function donatorScores() {
         } else { // New date, so new message
             let channel = await client.channels.fetch(details[1]);
             let message = await channel.send({ embeds: [embed] });
+            try {
+                await message.crosspost();
+            } catch (e) {
+                // ...
+            }
             details[3] = message.id;
             details[4] = currentDate;
             await query(con, `UPDATE users SET ScoreChannels = "${details.join(`-`)}" WHERE ID = "${userIDs[i]}";`);
@@ -405,7 +422,12 @@ async function News() {
     }
 
     let channel = await client.channels.fetch(config.newsChannel);
-    await channel.send({ embeds: [embed] });
+    let message = await channel.send({ embeds: [embed] });
+    try {
+        await message.crosspost();
+    } catch (e) {
+        // ...
+    }
 
     await query(con, `INSERT INTO news VALUES ('${new Date().toISOString().substring(0, 10).split(`-`).join(``)}', 'y');`);
 }
@@ -470,7 +492,12 @@ async function Injuries() { // Not finished yets
 
     // Getting channel
     let channel = await client.channels.fetch(config.injuriesChannel);
-    return await channel.send({ embeds: [embed] });
+    let message = await channel.send({ embeds: [embed] });
+    try {
+        await message.crosspost();
+    } catch (e) {
+        // ...
+    }
 } 
 
 client.login(config.token2);

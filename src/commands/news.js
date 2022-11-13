@@ -23,7 +23,7 @@ module.exports = {
 
         let embed = new Discord.MessageEmbed()
             .setTitle(`:newspaper: Basketball News From ESPN:`)
-            .setFooter(`NBABot is made by chig#4519 and freejstn#0666`)
+            .setFooter({ text: `NBABot is made by chig#4519 and freejstn#0666` })
             .setImage(json.articles[randomArticle].images[0].url)
             .setColor(teamColors.NBA);
 

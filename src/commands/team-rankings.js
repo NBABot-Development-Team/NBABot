@@ -16,56 +16,80 @@ module.exports = {
 		.setName(`team-rankings`)
 		.setDescription(`Get the league rankings for a particular statistic.`)
         .addStringOption(option => option.setName(`stat`).setDescription(`The statistic you want to find the rankings for.`).addChoices({
-            name: `Points`,
+            name: `Points (PTS)`,
             value: `PTS`
         }).addChoices({
-            name: `Assists`,
+            name: `Assists (AST)`,
             value: `AST`
         }).addChoices({
-            name: `Steals`,
-            value: `STL`
-        }).addChoices({
-            name: `Offensive Rebounds`,
+            name: `Offensive Rebounds (OREB)`,
             value: `OREB`
         }).addChoices({
-            name: `Defensive Rebounds`,
+            name: `Defensive Rebounds (DREB)`,
             value: `DREB`
         }).addChoices({
-            name: `Total Rebounds`,
+            name: `Total Rebounds (REB)`,
             value: `REB`
         }).addChoices({
-            name: `Blocks`,
+            name: `Steals (STL)`,
+            value: `STL`
+        }).addChoices({
+            name: `Blocks (BLK)`,
             value: `BLK`
         }).addChoices({
-            name: `Field Goals Made`,
-            value: `FGM`
-        }).addChoices({
-            name: `Field Goals Attempted`,
-            value: `FGA`
-        }).addChoices({
-            name: `Turnovers`,
+            name: `Turnovers (TOV)`,
             value: `TOV`
         }).addChoices({
-            name: `Three Pointers Made`,
-            value: `FG3M`
+            name: `Field Goals Made (FGM)`,
+            value: `FGM`
         }).addChoices({
-            name: `Three Pointers Attempted`,
-            value: `FG3A`
+            name: `Field Goals Attempted (FGA)`,
+            value: `FGA`
         }).addChoices({
-            name: `Free Throws Made`,
-            value: `FTM`
-        }).addChoices({
-            name: `Free Throws Attempted`,
-            value: `FTA`
-        }).addChoices({
-            name: `Field Goal Percentage`,
+            name: `Field Goal Percentage (FG%)`,
             value: `FG_PCT`
         }).addChoices({
-            name: `Free Throw Percentage`,
+            name: `Three Pointers Made (3PM)`,
+            value: `FG3M`
+        }).addChoices({
+            name: `Three Pointers Attempted (3PA)`,
+            value: `FG3A`
+        }).addChoices({
+            name: `Three Point Percentage (3P%)`,
+            value: `FG3_PCT`
+        }).addChoices({
+            name: `Free Throws Made (FTM)`,
+            value: `FTM`
+        }).addChoices({
+            name: `Free Throws Attempted (FTA)`,
+            value: `FTA`
+        }).addChoices({
+            name: `Free Throw Percentage (FT%)`,
             value: `FT_PCT`
         }).addChoices({
-            name: `Three Point Percentage`,
-            value: `FG3_PCT`
+            name: `Offensive Rating (ORTG)`,
+            value: `OFF_RATING`
+        }).addChoices({
+            name: `Defensive Rating (DRTG)`,
+            value: `DEF_RATING`
+        }).addChoices({
+            name: `Net Rating (NETRG)`,
+            value: `NET_RATING`
+        }).addChoices({
+            name: `Assist/Turnover Ratio (AST/TO)`,
+            value: `AST_TO`
+        }).addChoices({
+            name: `Effective Field Goal Percentage (EFG%)`,
+            value: `EFG_PCT`
+        }).addChoices({
+            name: `True Shooting Percentage (TS%)`,
+            value: `TS_PCT`
+        }).addChoices({
+            name: `Pace`,
+            value: `PACE`
+        }).addChoices({
+            name: `Player Impact Estimate (PIE)`,
+            value: `PIE`
         }).setRequired(true))
         .addStringOption(option => option.setName(`season`).setDescription(`An NBA season, e.g. 2019-2020, 2019-20, or 2019.`)),
     
@@ -83,9 +107,13 @@ module.exports = {
             if (!season) return await interaction.reply(`Please use a valid NBA team. See \`/teams\` for more info.`);
         }
 
+        let type = `Base`;
+        let advancedStats = [`OFF_RATING`, `DEF_RATING`, `NET_RATING`, `AST_PCT`, `AST_TO`, `OREB_PCT`, `DREB_PCT`, `REB_PCT`, `TM_TOV_PCT`, `EFG_PCT`, `TS_PCT`, `PACE`, `PIE`];
+        if (advancedStats.includes(stat)) type = `Advanced`;
+
         await interaction.deferReply();
 
-        fetch(`https://stats.nba.com/stats/leaguedashteamstats?Conference=&DateFrom=&DateTo=&Division=&GameScope=&GameSegment=&Height=&LastNGames=0&LeagueID=00&Location=&MeasureType=Base&Month=0&OpponentTeamID=0&Outcome=&PORound=0&PaceAdjust=N&PerMode=PerGame&Period=0&PlayerExperience=&PlayerPosition=&PlusMinus=N&Rank=N&Season=${season}-${(season + 1).toString().substring(2, 4)}&SeasonSegment=&SeasonType=Regular%20Season&ShotClockRange=&StarterBench=&TeamID=0&TwoWay=0&VsConference=&VsDivision=`, {
+        fetch(`https://stats.nba.com/stats/leaguedashteamstats?Conference=&DateFrom=&DateTo=&Division=&GameScope=&GameSegment=&Height=&LastNGames=0&LeagueID=00&Location=&MeasureType=${type}&Month=0&OpponentTeamID=0&Outcome=&PORound=0&PaceAdjust=N&PerMode=PerGame&Period=0&PlayerExperience=&PlayerPosition=&PlusMinus=N&Rank=N&Season=${season}-${(season + 1).toString().substring(2, 4)}&SeasonSegment=&SeasonType=Regular%20Season&ShotClockRange=&StarterBench=&TeamID=0&TwoWay=0&VsConference=&VsDivision=`, {
             headers: require(`../config.json`).headers
         }).then(async res => {
             let json = await res.text();
@@ -125,8 +153,8 @@ module.exports = {
             let description = ``;
 
             for (var i = 0; i < teams.length; i++) {
-                if ([`FG_PCT`, `FT_PCT`, `FG3_PCT`].includes(stat)) teams[i][statPosition] = (parseFloat(teams[i][statPosition]) * 100).toFixed(1);
-                description += `${i + 1}) \`${teams[i][statPosition]}\` - **${teams[i][1]} ${teamEmojis[teamNames[teams[i][0]]]}**\n`;
+                if ([`FG_PCT`, `FT_PCT`, `FG3_PCT`, `AST_PCT`, `OREB_PCT`, `DREB_PCT`, `REB_PCT`, `TM_TOV_PCT`, `EFG_PCT`, `TS_PCT`].includes(stat)) teams[i][statPosition] = (parseFloat(teams[i][statPosition]) * 100).toFixed(1);
+                description += `\`${i < 9 ? `0` : ``}${i + 1})\` \`${teams[i][statPosition]}\` - **${teams[i][1]} ${teamEmojis[teamNames[teams[i][0]]]}**\n`;
             }
 
             embed.setDescription(description);

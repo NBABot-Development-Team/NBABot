@@ -159,9 +159,10 @@ module.exports = {
 						if (games[k].gameId == json.games[i].gameId) { // Found game
 							let o = json.games[i];
 
-							for (var l = 0; l < o.markets.length; l++) {
+							marketLoop: for (var l = 0; l < o.markets.length; l++) {
 								if (o.markets[l].name == `2way`) {
 									let market = o.markets[l].books[0];
+									if (!market?.outcomes) continue marketLoop;
 									for (var m = 0; m < market.outcomes.length; m++) {
 										let location = market.outcomes[m].type;
 										let odd = parseFloat(market.outcomes[m].odds);
@@ -291,13 +292,18 @@ module.exports = {
 			// log?
 
 			delete require.cache[require.resolve(`../cache/${currentDate}/scoreboard.json`)];
-			let before = require(`../cache/${currentDate}/scoreboard.json`);
+			let before;
+			try {
+				before = require(`../cache/${currentDate}/scoreboard.json`);
+			} catch (e) {
+				// ...
+			}
 
 			let allowedToCycle = true;
 			if (!json.games) allowedToCycle = false;
 			else if (json.games.length == 0) allowedToCycle = false;
 
-			if (allowedToCycle) {
+			if (allowedToCycle && before) {
 				for (var i = 0; i < json.games.length; i++) {
 					if (before.games[i].gameStatus == 2 && json.games[i].gameStatus == 3) {
 						console.log(`Claiming bets from ${json.games[i].awayTeam.teamTriCode} @ ${json.games[i].homeTeam.teamTriCode} on ${currentDate}`);

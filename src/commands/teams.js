@@ -19,7 +19,7 @@ module.exports = {
         let embed = new Discord.MessageEmbed()
             .setTitle(`NBA Team Names`)
             .setColor(teamColors.NBA)
-            .setFooter(`NBABot is made by chig#4519 and freejstn#0666`);
+            .setFooter({ text: `NBABot is made by chig#4519 and freejstn#0666` });
 
         let description = ``;
 

@@ -106,7 +106,6 @@ module.exports = {
 		}
 		
 		// Getting date object
-		console.log(gameDetails.gameTimeUTC);
 		let dateObject = new Date(gameDetails.gameTimeUTC);
 
 		// Checking if game is yet to start
@@ -194,7 +193,7 @@ module.exports = {
 			const row = new Discord.MessageActionRow()
 				.addComponents(
 					new Discord.MessageButton()
-						.setCustomId(gameDetails[otherTeamLocation].teamTricode)
+						.setCustomId(`${gameDetails[otherTeamLocation].teamTricode}-${gameID}`)
 						.setLabel(`${gameDetails[otherTeamLocation].teamTricode} boxscore`)
 						.setStyle(`PRIMARY`)
 						.setEmoji(teamEmojis[gameDetails[otherTeamLocation].teamTricode]),
@@ -216,12 +215,12 @@ module.exports = {
 		getBoxscore(false, interactionSource, true);
 
 		// Collecting responses
-		const filter = i => i.customId.length === 3;
+		const filter = i => teamNicknames[i.setCustomId.split(`-`)[0]] && i.customId.split(`-`)[1] == gameID;
 		const collector = interactionSource.channel.createMessageComponentCollector({ filter });
 		collector.on(`collect`, async i => {
 			collector.resetTimer();
-			mode = !mode;
-			getBoxscore(true, i, mode);	
+			mode = (i.customId.split(`-`)[1] == requestedTeam);
+			getBoxscore(true, i, mode);
 		});
 	},
 };

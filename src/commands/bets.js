@@ -24,6 +24,9 @@ module.exports = {
         if (!user) ID = interaction.user.id;
         else ID = user.id; 
 
+        let userObject = await query(con, `SELECT * FROM users WHERE ID = "${ID}";`);
+        userObject = userObject[0];
+
         let bets = await query(con, `SELECT * FROM bets WHERE ID = "${ID}";`);
         let betsValid = true;
         if (!bets) betsValid = false;
@@ -33,6 +36,8 @@ module.exports = {
 
         let embed = new Discord.MessageEmbed()
             .setTitle(`Bets placed for user ${((user) ? `${user.username}#${user.discriminator}` : interaction.user.tag)}:`)
+            .setDescription(`Your remaining balance is \`$${userObject.Balance.toFixed(2)}\`.`)
+            .setFooter({ text: `Note: NBABot's simulated betting system uses NO real money/currency.` })
             .setColor(teamColors.NBA);
 
         let fields = 0;

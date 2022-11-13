@@ -42,7 +42,6 @@ module.exports = {
         if (!team) return await interaction.reply({ content: `Please use a valid team. Use /teams to find out more info.` });
 
         // Validating the amount
-        console.log(typeof parseFloat(user.Balance));
         if (requestedAmount.toLowerCase() == `all`) requestedAmount = parseFloat(user.Balance);
         else if (requestedAmount[0] == `$`) requestedAmount = requestedAmount.substring(1, requestedAmount.length);
         if (!parseFloat(requestedAmount)) return await interaction.reply({ content: `Please use a valid amount, e.g. $5.50 or $10.` });
@@ -130,15 +129,11 @@ module.exports = {
         if (!betsFromDate) await query(con, `ALTER TABLE bets ADD d${date} varchar(512);`);
 
         let existingBetsFromDate = await query(con, `SELECT d${date} FROM bets WHERE ID = "${interaction.user.id}";`);
-
-        console.log(existingBetsFromDate);
         
         let betAlreadyExists = true;
         if (!existingBetsFromDate) betAlreadyExists = false;
         else if (existingBetsFromDate.length == 0) betAlreadyExists = false;
         else if (!existingBetsFromDate[0][`d${date}`]) betAlreadyExists = false;
-
-        console.log(betAlreadyExists);
 
         let replacedBet;
         if (!betAlreadyExists) {
@@ -170,6 +165,7 @@ module.exports = {
         let embed = new Discord.MessageEmbed()
             .setTitle(`${generalEmojis.success} Bet successfully placed.`)
             .setColor(0x5CB85C)
+            .setDescription(`Your balance is now \`$${user.Balance.toFixed(2)}\`.`)
             .addField(`Details:`, `**Game:** ${teams.join(` @ `)} on ${new Date(date.substring(0, 4), parseInt(date.substring(4, 6)) - 1, parseInt(date.substring(6, 8))).toDateString()}\n**Team**: ${team}\n**Amount placed**: $${parseInt(amount).toFixed(2)}\n**Possible payout**: $${parseInt(payout).toFixed(2)}`);
 
         if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });
@@ -185,6 +181,8 @@ module.exports = {
 
         let embed2 = new Discord.MessageEmbed()
             .setTitle(`Bets placed for user ${interaction.user.tag}:`)
+            .setDescription(`Your remaining balance is \`$${user.Balance.toFixed(2)}\`.`)
+            .setFooter({ text: `Note: NBABot's simulated betting system uses no real money/currency.` })
             .setColor(teamColors.NBA);
 
         let fields = 0;

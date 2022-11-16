@@ -168,7 +168,7 @@ module.exports = {
 
             for (var i = 0; i < max; i++) {
                 if (stat.includes(`PCT`)) leaders[i][statPosition] = (parseFloat(leaders[i][statPosition]) * 100).toFixed(1);
-                description += `\`${i < 9 ? `0` : ``}${i + 1})\` \`${leaders[i][statPosition]}\` - **${leaders[i][1]}** ${teamEmojis[teamNames[leaders[i][3]]]}\n`
+                description += `\`${i < 9 ? `0` : ``}${i + 1})\` \`${leaders[i][statPosition]}\` - ${teamEmojis[teamNames[leaders[i][3]]]} **${leaders[i][1]}**\n`
             }
 
             embed.setDescription(description);

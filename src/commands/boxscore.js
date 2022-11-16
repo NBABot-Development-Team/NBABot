@@ -81,7 +81,7 @@ module.exports = {
 		} else json = await getJSON(`http://data.nba.net/10s/prod/v1/${requestedDate}/scoreboard.json`); */
 
 		// Checking if the team played on that date and getting the game ID if so
-		let gameID, teamLocationOriginal, otherTeamLocationOriginal, gameDetails;
+		let gameID, teamLocationOriginal, otherTeamLocationOriginal, gameDetails, ogTeam, ogOpp;
 		if (!json) gameID = null;
 		else if (!json.games) gameID = null;
 		else {
@@ -91,11 +91,15 @@ module.exports = {
 					teamLocationOriginal = `awayTeam`;
 					otherTeamLocationOriginal = `homeTeam`;
 					gameDetails = json.games[i];
+					ogTeam = json.games[i].awayTeam.teamTricode;
+					ogOpp = json.games[i].homeTeam.teamTricode;
 				} else if (json.games[i].homeTeam.teamTricode == requestedTeam) {
 					gameID = json.games[i].gameId;
 					teamLocationOriginal = `homeTeam`;
 					otherTeamLocationOriginal = `awayTeam`;
 					gameDetails = json.games[i];
+					ogTeam = json.games[i].homeTeam.teamTricode;
+					ogOpp = json.games[i].awayTeam.teamTricode;
 				}
 			}
 		}
@@ -147,9 +151,11 @@ module.exports = {
 		let mode = true;
 
 		async function getBoxscore(update, interaction, setting) {
-
 			let teamLocation = setting ? (teamLocationOriginal == `awayTeam` ? `awayTeam` : `homeTeam`) : (teamLocationOriginal == `awayTeam` ? `homeTeam` : `awayTeam`);
 			let otherTeamLocation = (teamLocation == `awayTeam`) ? `homeTeam` : `awayTeam`;
+
+			// Re-requesting boxscore
+			b = await getJSON(`https://cdn.nba.com/static/json/liveData/boxscore/boxscore_${gameID}.json`);
 		
 			let embed = new Discord.MessageEmbed()
 				.setTitle(`Boxscore for ${teamEmojis[gameDetails[teamLocation].teamTricode]} ${gameDetails[teamLocation].teamTricode} ${(teamLocation == `homeTeam`) ? `v` : `@`} ${gameDetails[otherTeamLocation].teamTricode} ${teamEmojis[gameDetails[otherTeamLocation].teamTricode]}`)
@@ -193,7 +199,7 @@ module.exports = {
 			const row = new Discord.MessageActionRow()
 				.addComponents(
 					new Discord.MessageButton()
-						.setCustomId(`${gameDetails[otherTeamLocation].teamTricode}-${gameID}`)
+						.setCustomId(`${gameDetails[otherTeamLocation].teamTricode}-${gameID}-${interactionSource.id}`)
 						.setLabel(`${gameDetails[otherTeamLocation].teamTricode} boxscore`)
 						.setStyle(`PRIMARY`)
 						.setEmoji(teamEmojis[gameDetails[otherTeamLocation].teamTricode]),
@@ -215,11 +221,13 @@ module.exports = {
 		getBoxscore(false, interactionSource, true);
 
 		// Collecting responses
-		const filter = i => teamNicknames[i.setCustomId.split(`-`)[0]] && i.customId.split(`-`)[1] == gameID;
+		const filter = i => teamNicknames[i.customId.split(`-`)[0]] && i.customId.split(`-`)[1] == gameID && i.user.id == interactionSource.user.id && interactionSource.id == i.customId.split(`-`)[2];
 		const collector = interactionSource.channel.createMessageComponentCollector({ filter });
 		collector.on(`collect`, async i => {
 			collector.resetTimer();
-			mode = (i.customId.split(`-`)[1] == requestedTeam);
+
+			mode = (i.customId.split(`-`)[0] == requestedTeam);
+			
 			getBoxscore(true, i, mode);
 		});
 	},

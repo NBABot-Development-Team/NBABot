@@ -7,6 +7,9 @@ const teamColors = require(`../assets/teams/colors.json`);
 const teamEmojis = require(`../assets/teams/emojis.json`);
 
 // Methods
+const formatDuration = require(`../methods/format-duration.js`);
+
+// Methods
 const query = require('../methods/database/query');
 
 module.exports = {
@@ -54,10 +57,46 @@ module.exports = {
 
             // e.g. OKC|10|29.30
 
+            let scoreboard;
+            try {
+                scoreboard = require(`../cache/${key.split(`d`).join(``)}/scoreboard.json`);
+            } catch (e) {
+                scoreboard = null;
+            }
+
             let totalPlaced = 0, totalPayout = 0;
             for (var i = 0; i < bets[key].split(`,`).length; i++) {
                 let details = bets[key].split(`,`)[i].split(`|`);
-                str2 += `\`$${parseFloat(details[1]).toFixed(2)}\` on ${teamEmojis[details[0]]} (payout: \`$${parseFloat(details[2]).toFixed(2)}\`)\n`;
+
+                // Trying to find opponent details
+                let opponent, startStr;
+                if (scoreboard) {
+                    gameLoop: for (var j = 0; j < scoreboard.games.length; j++) {
+                        if (scoreboard.games[j].awayTeam.teamTricode == details[0]) {
+                            opponent = ` @ ${teamEmojis[scoreboard.games[j].homeTeam.teamTricode]}`;
+                            if (scoreboard.games[j].gameStatus == 1) {
+                                if (scoreboard.games[j].gameDateTimeUTC) {
+                                    startStr = ` Starts ${formatDuration(new Date(scoreboard.games[j].gameDateTimeUTC).getTime())}`;
+                                } else if (scoreboard.games[j].gameTimeUTC) {
+                                    startStr = ` Starts ${formatDuration(new Date(scoreboard.games[j].gameTimeUTC).getTime())}`;
+                                }
+                            } else startStr = ` Game has started`;
+                            break gameLoop;
+                        } else if (scoreboard.games[j].homeTeam.teamTricode == details[0]) {
+                            opponent = ` v ${teamEmojis[scoreboard.games[j].awayTeam.teamTricode]}`;
+                            if (scoreboard.games[j].gameStatus == 1) {
+                                if (scoreboard.games[j].gameDateTimeUTC) {
+                                    startStr = ` Starts ${formatDuration(new Date(scoreboard.games[j].gameDateTimeUTC).getTime())}`;
+                                } else if (scoreboard.games[j].gameTimeUTC) {
+                                    startStr = ` Starts ${formatDuration(new Date(scoreboard.games[j].gameTimeUTC).getTime())}`;
+                                }
+                            } else startStr = ` Game has started`;
+                            break gameLoop;
+                        }
+                    }
+                }
+
+                str2 += `\`$${parseFloat(details[1]).toFixed(2)}\` on ${teamEmojis[details[0]]}${(opponent) ? opponent : ``} (payout: \`$${parseFloat(details[2]).toFixed(2)}\`)${(startStr) ? startStr : ``}\n`;
                 totalPlaced += parseFloat(details[1]);
                 totalPayout += parseFloat(details[2]);
             }

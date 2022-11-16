@@ -217,44 +217,6 @@ module.exports = {
 					}
 				} else str2 += `...`;
 
-				// Pause this for lil bit
-				/* Game leaders if possible
-				if (str2.endsWith(`...`) && c.gameStatus == 3) {
-					// Checking if there is a cached boxscore to pull data from
-					if (fs.existsSync(path.join(__dirname, `../cache/${date}/${c.gameId}_boxscore.json`))) {
-						let cachedBoxscore = require(`../cache/${date}/${c.gameId}_boxscore.json`);
-						let leaders = { points: {}, assists: {}, rebounds: {} };
-
-						for (var stat in leaders) {
-							let v = parseInt(cachedBoxscore.stats.awayTeam.leaders[stat].value), h = parseInt(cachedBoxscore.stats.homeTeam.leaders[stat].value);
-							if (v > h) {
-								leaders[stat] = cachedBoxscore.stats.awayTeam.leaders[stat];
-							} else if (v < h) {
-								leaders[stat] = cachedBoxscore.stats.homeTeam.leaders[stat];
-							} else {
-								// Merging two player arrays
-								leaders[stat] = cachedBoxscore.stats.awayTeam.leaders[stat];
-								leaders[stat].players = leaders[stat].players.concat(cachedBoxscore.stats.homeTeam.leaders[stat].players);
-							}
-							console.log(leaders[stat]);
-							let arr = [];
-							playerLoop: for (var j = 0; j < leaders[stat].players.length; j++) {
-								// if (!leaders[stat].players[j].firstName || !leaders[stat].players[j].lastName) continue;
-								console.log(leaders[stat].players[j]);
-								if (typeof leaders[stat].players[j] == `string`) {
-									leaders[stat].players[j] = leaders[stat].players[j].replace(/\s/g, ``).split(`.`).join(`. `)
-									arr.push(`${leaders[stat].players[j].split(` `)[0][0]}. ${leaders[stat].players[j].split(leaders[stat].players[j].split(` `)[0]).join(``)}`);
-								} else if (leaders[stat].players[j].firstName && leaders[stat].players[j].lastName) {
-									arr.push(`${leaders[stat].players[j].firstName.substring(0, 1)}. ${leaders[stat].players[j].lastName}`);
-								} else continue playerLoop;
-							}
-							leaders[stat].players = arr;
-						}
-						str2 = str2.substring(0, str2.length - 3);
-						str2 += `**Leaders:** \`${leaders.points.value}\` pts (${leaders.points.players.join(`, `)}), \`${leaders.assists.value}\` ast (${leaders.assists.players.join(`, `)}), \`${leaders.rebounds.value}\` reb (${leaders.rebounds.players.join(`, `)})`;
-					}
-				} */
-
 				if (!str2) str2 = `...`;
 				if (!str1 || !str2) continue;
 
@@ -363,12 +325,12 @@ module.exports = {
 		// Initial interaction reply
 		getScores(false, interactionSource, requestedDate, false);
 
-		// Collecting responses
-		const filter = i => i.user.id === interactionSource.user.id;
+		/* Collecting responses
+		const filter = i => i.user.id === interactionSource.user.id && ;
 		const collector = interactionSource.channel.createMessageComponentCollector({ filter });
 		collector.on(`collect`, async i => {
 			collector.resetTimer();
 			getScores(true, i, i.customId, false);
-		});
+		});*/
 	}
 }

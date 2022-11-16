@@ -3,6 +3,8 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const Discord = require(`discord.js`);
 const wiki = require(`wikipedia`);
 
+const config = require(`../config.json`);
+
 // Assets
 const teamColors = require(`../assets/teams/colors.json`);
 const teamNames = require(`../assets/teams/names.json`);
@@ -18,6 +20,7 @@ const ids = {
 // Methods
 const searchPlayers = require(`../methods/search-players.js`);
 const getJSON = require(`../methods/get-json.js`);
+const formatNumber = require(`../methods/format-number.js`);
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -78,7 +81,6 @@ module.exports = {
 
         // Adding other info if from nba API
         if (name[0] == `nba`) {
-
             let player;
             yearLoop: for (var i = today.seasonScheduleYear; i > 2015; i--) {
                 let players = require(`../assets/players/nba/${i}.json`);
@@ -121,6 +123,50 @@ module.exports = {
                     }
                 }
                 embed.addField(str1, str2, true);
+
+                let awards = await fetch(`https://stats.nba.com/stats/playerawards?PlayerID=${player.personId}`, {
+                    headers: config.headers
+                });
+
+                if (awards.ok) {
+                    awards = await awards.json();
+
+                    awards = awards.resultSets[0].rowSet;
+
+                    let team = {"All-NBA": [], "All-Defensive Team": [], "All-Rookie Team": []};
+                    let award = {"NBA Most Valuable Player": [], "NBA Defensive Player of the Year": [], "NBA Finals Most Valuable Player": [], "NBA Rookie of the Year": []};
+                    for (var k = 0; k < awards.length; k++) {
+                        if (team[awards[k][4]]) {
+                            team[awards[k][4]].push({ team: awards[k][5], season: awards[k][6] });
+                        } else if (award[awards[k][4]]) {
+                            award[awards[k][4]].push(awards[k][6]);
+                        }
+                    }
+
+                    let str1t = `__Teams__`, str2t = ``, str1a = `__Awards__`, str2a = ``;
+
+                    typeLoop: for (var type in team) {
+                        if (team[type].length == 0) continue typeLoop;
+                        
+                        str2t += `**${type}:** `;
+
+                        let str2tt = [];
+                        for (var k = 0; k < team[type].length; k++) {
+                            str2tt.push(`${formatNumber(team[type][k].team)} (${team[type][k].season})`);
+                        }
+
+                        str2t += str2tt.join(`, `);
+                    }
+
+                    typeLoop: for (var type in award) {
+                        if (award[type].length == 0) continue typeLoop;
+
+                        str2a += `**${type}:** ${award[type].join(`, `)}`;
+                    }
+
+                    if (str2t) embed.addField(str1t, str2t);
+                    if (str2a) embed.addField(str1a, str2a);
+                }
             } 
         } else embed.setColor(teamColors.NBA);
 

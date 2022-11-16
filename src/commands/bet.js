@@ -124,9 +124,19 @@ module.exports = {
         try {
             betsFromDate = await query(con, `SELECT d${date} FROM bets;`);
         } catch (e) {
-            await query(con, `ALTER TABLE bets ADD d${date} varchar(512);`);
+            try {
+                await query(con, `ALTER TABLE bets ADD d${date} varchar(512);`);
+            } catch (e) {
+                return await interaction.reply(`An error occurred with code 3. Please contact chig#4519 if this issue persists.`);
+            }  
         }
-        if (!betsFromDate) await query(con, `ALTER TABLE bets ADD d${date} varchar(512);`);
+        if (!betsFromDate) {
+            try {
+                await query(con, `ALTER TABLE bets ADD d${date} varchar(512);`);
+            } catch (e) {
+                return await interaction.reply(`An error occurred with code 3. Please contact chig#4519 if this issue persists.`);
+            }
+        }
 
         let existingBetsFromDate = await query(con, `SELECT d${date} FROM bets WHERE ID = "${interaction.user.id}";`);
         

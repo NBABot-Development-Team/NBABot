@@ -74,43 +74,59 @@ module.exports = {
 			}
 		}
 
-		/*if (fs.existsSync(`./cache/${requestedDate}/`)) {
-			if (fs.existsSync(`./cache/${requestedDate}/scoreboard.json`)) {
-				json = require(`../cache/${requestedDate}/scoreboard.json`);
-			} else json = await getJSON(`http://data.nba.net/10s/prod/v1/${requestedDate}/scoreboard.json`);
-		} else json = await getJSON(`http://data.nba.net/10s/prod/v1/${requestedDate}/scoreboard.json`); */
-
 		// Checking if the team played on that date and getting the game ID if so
 		let gameID, teamLocationOriginal, otherTeamLocationOriginal, gameDetails, ogTeam, ogOpp;
 		if (!json) gameID = null;
 		else if (!json.games) gameID = null;
-		else {
-			for (var i = 0; i < json.games.length; i++) {
+
+		let foundGame = false;
+		function searchForGames(json) {
+			gameLoop: for (var i = 0; i < json.games.length; i++) {
 				if (json.games[i].awayTeam.teamTricode == requestedTeam) {
+					foundGame = true;
 					gameID = json.games[i].gameId;
 					teamLocationOriginal = `awayTeam`;
 					otherTeamLocationOriginal = `homeTeam`;
 					gameDetails = json.games[i];
 					ogTeam = json.games[i].awayTeam.teamTricode;
 					ogOpp = json.games[i].homeTeam.teamTricode;
+					break gameLoop;
 				} else if (json.games[i].homeTeam.teamTricode == requestedTeam) {
+					foundGame = true;
 					gameID = json.games[i].gameId;
 					teamLocationOriginal = `homeTeam`;
 					otherTeamLocationOriginal = `awayTeam`;
 					gameDetails = json.games[i];
 					ogTeam = json.games[i].homeTeam.teamTricode;
 					ogOpp = json.games[i].awayTeam.teamTricode;
+					break gameLoop;
 				}
 			}
 		}
 
+		if (json.games) {
+			searchForGames(json);
+		}
+
 		// Ensuring all variables are available
 		if (!gameID || !teamLocationOriginal || !otherTeamLocationOriginal || !gameDetails) {
-			return await interactionSource.reply({ content: `${requestedTeam} did not play on ${new Date(requestedDate.substring(0, 4), parseInt(requestedDate.substring(4, 6)) - 1, requestedDate.substring(6, 8)).toDateString()}.` });
+			let dateObject = new Date(requestedDate.substring(0, 4), parseInt(requestedDate.substring(4, 6)) - 1, requestedDate.substring(6, 8));
+			dateLoop: for (var i = 0; i < 5; i++) {
+				let yDate = new Date(dateObject.getTime() - (86400000 * (i + 1))).toISOString().substring(0, 10).split(`-`).join(``);
+				if (fs.existsSync(`./cache/${yDate}/scoreboard.json`)) {
+					searchForGames(require(`../cache/${yDate}/scoreboard.json`));
+					if (foundGame) break dateLoop;
+				}
+			}
+
+			if (!foundGame) return await interactionSource.reply({ content: `${requestedTeam} did not play on ${new Date(requestedDate.substring(0, 4), parseInt(requestedDate.substring(4, 6)) - 1, requestedDate.substring(6, 8)).toDateString()}.` });
 		}
+
+		if (!gameID || !teamLocationOriginal || !otherTeamLocationOriginal || !gameDetails || !foundGame) return await interactionSource.reply({ content: `${requestedTeam} did not play on ${new Date(requestedDate.substring(0, 4), parseInt(requestedDate.substring(4, 6)) - 1, requestedDate.substring(6, 8)).toDateString()}.` });
 		
 		// Getting date object
-		let dateObject = new Date(gameDetails.gameTimeUTC);
+		if (gameDetails.gameDateTimeUTC) dateObject = new Date(new Date(gameDetails.gameDateTimeUTC) - 1000 * 3600 * 5);
+		else dateObject = new Date(new Date(gameDetails.gameTimeUTC) - 1000 * 3600 * 5);
 
 		// Checking if game is yet to start
 		if (gameDetails.gameStatus == 1) {
@@ -203,6 +219,11 @@ module.exports = {
 						.setLabel(`${gameDetails[otherTeamLocation].teamTricode} boxscore`)
 						.setStyle(`PRIMARY`)
 						.setEmoji(teamEmojis[gameDetails[otherTeamLocation].teamTricode]),
+
+					new Discord.MessageButton()
+						.setCustomId(`${gameDetails[teamLocation].teamTricode}-${gameID}-${interactionSource.id}`)
+						.setLabel(`Refresh`)
+						.setStyle(`PRIMARY`),
 
 					new Discord.MessageButton()
 						.setURL(`https://www.nba.com/game/${gameDetails.awayTeam.teamTricode.toLowerCase()}-vs-${gameDetails.homeTeam.teamTricode.toLowerCase()}-${gameID}/box-score`)

@@ -2,6 +2,7 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const Discord = require(`discord.js`);
 const wiki = require(`wikipedia`);
+const fetch = require(`node-fetch`);
 
 const config = require(`../config.json`);
 
@@ -66,7 +67,7 @@ module.exports = {
         // Found a player
         let playerName = names[name[0]][name[1]];
         let embed = new Discord.MessageEmbed()
-            .setTitle(`Player information for ${playerName}:`);
+            .setTitle(`__Player information for ${playerName}:__`);
 
         // Adding wikipedia info
         try {
@@ -148,7 +149,7 @@ module.exports = {
                     typeLoop: for (var type in team) {
                         if (team[type].length == 0) continue typeLoop;
                         
-                        str2t += `**${type}:** `;
+                        str2t += `**${type} (${team[type].length}):** `;
 
                         let str2tt = [];
                         for (var k = 0; k < team[type].length; k++) {
@@ -156,12 +157,13 @@ module.exports = {
                         }
 
                         str2t += str2tt.join(`, `);
+                        str2t = `${str2t}\n`;
                     }
 
                     typeLoop: for (var type in award) {
                         if (award[type].length == 0) continue typeLoop;
 
-                        str2a += `**${type}:** ${award[type].join(`, `)}`;
+                        str2a += `**${type} (${award[type].length}):** ${award[type].join(`, `)}\n`;
                     }
 
                     if (str2t) embed.addField(str1t, str2t);

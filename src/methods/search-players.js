@@ -8,7 +8,7 @@ const ids = {
     bdl: require(`../assets/players/bdl/ids.json`),
 };
 
-module.exports = (input) => {
+module.exports = (input, useBDL = true) => {
     let found = false;
     let possible = { nba: {}, bdl: {} };
     let details = { source: null, id: null, name: null };
@@ -23,7 +23,7 @@ module.exports = (input) => {
 
     // Certain search for bdl
     if (!found) {
-        if (ids.bdl[input.toLowerCase()]) {
+        if (ids.bdl[input.toLowerCase()] && useBDL) {
             possible.bdl[ids.bdl[input.toLowerCase()]] = input.length;
             return [`bdl`, ids.bdl[input.toLowerCase()]];
             found = true;
@@ -33,6 +33,7 @@ module.exports = (input) => {
     if (!found) {
         // Now doing full search
         sourceLoop: for (var key in possible) {
+            if (key == `bdl` && !useBDL) continue sourceLoop;
             nameLoop: for (var name in ids[key]) {
                 if (namesAlreadyPushed.includes(name)) continue nameLoop;
                 let names = name.split(` `);

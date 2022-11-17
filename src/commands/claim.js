@@ -56,6 +56,8 @@ module.exports = {
 			*/
         }
 
+        await require(`../methods/update-peak-positions.js`)(con, interaction.user.id);
+
         if (betsClaimed == 0 || !betsClaimed) return await interaction.editReply(`You have no bets to claim. [2]`);
         else return await interaction.editReply(`\`${betsClaimed}\` bets were claimed. Check your DMs for details.`);
 	},

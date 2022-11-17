@@ -18,6 +18,8 @@ module.exports = {
 	async execute(variables) {
 		let { interaction, con, client, ad } = variables;
 
+		await require(`../methods/update-peak-positions.js`)(con, interaction.user.id);
+
 		await interaction.deferReply();
 
 		let global = interaction.options.getBoolean(`global`);

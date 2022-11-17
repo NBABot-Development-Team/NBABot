@@ -22,6 +22,8 @@ module.exports = {
         let user = await getUser(con, `users`, interaction.user.id);
         user = user[0];
 
+        await require(`../methods/update-peak-positions.js`)(con, interaction.user.id);
+
         let embed = new Discord.MessageEmbed()
             .setTitle(`__Balance for user ${interaction.user.tag}:__`)
             .setColor((user.FavouriteTeam == `NBA`) ? `#FF4242` : teamColors[user.FavouriteTeam])
@@ -29,7 +31,7 @@ module.exports = {
             .setFooter({ text: `Note: the virtual currency used in NBABot's simulated betting system is NOT REAL and has no value.` })
             .setDescription(`Get an extra $10 in the simulated betting system by using \`/vote\`.`)
             .addField(`Description`, `${user.Description}`, false)
-            .addField(`Balance`, `$${user.Balance.toFixed(2)}`, true)
+            .addField(`Balance`, `\`$${user.Balance.toFixed(2)}\` (Peak: \`$${parseFloat(user.PeakPosition.split(`-`)[1]).toFixed(2)}\`)`, true)
             .addField(`Favourite Team`, `${user.FavouriteTeam} ${teamEmojis[user.FavouriteTeam]}`, true)
             .addField(`Donator`, (user.Donator == `y`) ? `Yes (NBA Chamption Donator)` : ((user.Donator == `f`) ? `Yes (Finals MVP Donator)` : `No`), true)
             .addField(`Betting Record`, `${user.Correct}-${user.Wrong} (${convertToPercentage(user.Correct, user.Correct + user.Wrong)})`, true);
@@ -42,7 +44,7 @@ module.exports = {
                     globalPosition = globalPosition[0].serial_num;
                     let totalGlobalCount = await query(con, `SELECT COUNT(*) FROM users;`);
                     totalGlobalCount = totalGlobalCount[0][`COUNT(*)`];
-                    embed.addField(`Global Ranking :earth_americas:`, `${globalPosition}/${totalGlobalCount}`, true);
+                    embed.addField(`Global Ranking :earth_americas:`, `${globalPosition}/${totalGlobalCount} (Peak: ${user.PeakPosition.split(`-`)[0]})`, true);
                 }
             }
         }

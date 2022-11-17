@@ -15,12 +15,20 @@ module.exports = {
 	data: new SlashCommandBuilder()
 		.setName(`standings`)
 		.setDescription(`Get the current league, conference or division standings.`)
+        .addStringOption(option => option.setName(`conference`).setDescription(`Which conference you want to see standings for, e.g. East or West.`).addChoices({
+            name: `Eastern Conference`,
+            value: `east`
+        }).addChoices({
+            name: `Western Conference`,
+            value: `west`
+        }))
         .addStringOption(option => option.setName(`season`).setDescription(`A season, e.g. 2022-2023, 2017-18, or 2019. This will default to the current season.`)),
     
 	async execute(variables) {
 		let { interaction, ad } = variables;
 
 		let season = interaction.options.getString(`season`);
+        let conference = interaction.options.getString(`conference`);
 
         if (season) {
             season = formatSeason(season);
@@ -93,7 +101,7 @@ module.exports = {
         }*/
 
         let embed = new Discord.MessageEmbed()
-            .setTitle(`${seasonScheduleYear}-${seasonScheduleYear + 1} League Standings:`)
+            .setTitle(`__${seasonScheduleYear}-${seasonScheduleYear + 1} ${(conference) ? `` : `League `}Standings:__`)
             .setColor(teamColors.NBA);
             
         let w = 10, l = 6, g = 4, s = 8;
@@ -101,8 +109,14 @@ module.exports = {
             w++; l++; g++; s++;
         }
 
-        for(var k = 0; k < json.length; k++) {
-            let description = `\`     Team    W-L  PCT  GB  STR\`\n`;
+        conferenceLoop: for (var k = 0; k < json.length; k++) {
+            if (conference) {
+                if (json[k].abbreviation.toLowerCase() != conference) {
+                    continue conferenceLoop;
+                }
+            }
+
+            let description = `\`     Team    W-L  PCT   GB  STR\`\n`;
 
             let teams = json[k].standings;
             

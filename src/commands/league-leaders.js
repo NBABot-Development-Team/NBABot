@@ -143,15 +143,17 @@ module.exports = {
 
             let embed = new Discord.MessageEmbed()
                 .setTitle(`${teamEmojis.NBA} __${season}-${parseInt(season) + 1} ${seasonType.split(`+`).join(` `)} ${(mode == `PerGame`) ? `Per Game` : `Total`} League Leaders for ${stat}:__`)
-                .setColor(teamColors.NBA);
+                .setColor(teamColors.NBA)
+                .setFooter({ text: `Note: players have been limited to those playing >= 15 minutes per game.` });
 
             let leaders = json.resultSets[0].rowSet;
             let max = 20;
             let description = ``;
 
             // Locating where stat is
-            let statPosition, statRankingPosition;
+            let statPosition, statRankingPosition, minPosition;
             for (var i = 0; i < json.resultSets[0].headers.length; i++) {
+                if (json.resultSets[0].headers[i] == `MIN`) minPosition = i;
                 if (json.resultSets[0].headers[i] == stat.toUpperCase()) {
                     statPosition = i;
                 }
@@ -166,9 +168,16 @@ module.exports = {
                 return a[statRankingPosition] - b[statRankingPosition];
             });
 
+            let counter = 0;
             for (var i = 0; i < max; i++) {
+                if (leaders[i][minPosition] < 15) {
+                    max++;
+                    continue;
+                }
+                if (stat == `PIE`) leaders[i][statPosition] = (parseFloat(leaders[i][statPosition]) * 100).toFixed(1);
                 if (stat.includes(`PCT`)) leaders[i][statPosition] = (parseFloat(leaders[i][statPosition]) * 100).toFixed(1);
-                description += `\`${i < 9 ? `0` : ``}${i + 1})\` \`${leaders[i][statPosition]}\` - ${teamEmojis[teamNames[leaders[i][3]]]} **${leaders[i][1]}**\n`
+                description += `\`${counter < 9 ? `0` : ``}${counter + 1})\` \`${leaders[i][statPosition]}\` - ${teamEmojis[teamNames[leaders[i][3]]]} **${leaders[i][1]}**\n`;
+                counter++;
             }
 
             embed.setDescription(description);

@@ -3,7 +3,7 @@ const config = require(`../config.json`);
 const fs = require(`fs`);
 
 // https://stats.nba.com/stats/playerprofilev2?LeagueID=&PerMode=PerGame&PlayerID=1631095
-fetch(`https://stats.nba.com/stats/playerawards?PlayerID=2544`, {
+fetch(`https://stats.nba.com/stats/playergamelog?DateFrom=&DateTo=&LeagueID=&PlayerID=1628969&Season=2021-22&SeasonType=Regular+Season`, {
     headers: config.headers
 }).then(async res => {
     let a = await res.text();

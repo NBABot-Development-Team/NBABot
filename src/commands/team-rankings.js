@@ -153,6 +153,7 @@ module.exports = {
             let description = ``;
 
             for (var i = 0; i < teams.length; i++) {
+                if (stat == `PIE`) teams[i][statPosition] = (parseFloat(teams[i][statPosition]) * 100).toFixed(1);
                 if ([`FG_PCT`, `FT_PCT`, `FG3_PCT`, `AST_PCT`, `OREB_PCT`, `DREB_PCT`, `REB_PCT`, `TM_TOV_PCT`, `EFG_PCT`, `TS_PCT`].includes(stat)) teams[i][statPosition] = (parseFloat(teams[i][statPosition]) * 100).toFixed(1);
                 description += `\`${i < 9 ? `0` : ``}${i + 1})\` \`${teams[i][statPosition]}\` - ${teamEmojis[teamNames[teams[i][0]]]} **${teams[i][1]}**\n`;
             }

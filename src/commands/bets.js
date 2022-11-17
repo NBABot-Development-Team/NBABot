@@ -21,6 +21,8 @@ module.exports = {
 	async execute(variables) {
 		let { interaction, con, ad } = variables;
 
+        await require(`../methods/update-peak-positions.js`)(con, interaction.user.id);
+
         let user = interaction.options.getUser(`user`);
 
         let ID;

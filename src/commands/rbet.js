@@ -95,6 +95,8 @@ module.exports = {
 
                     if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });
 
+                    await require(`../methods/update-peak-positions.js`)(con, interaction.user.id);
+
                     return await interaction.reply({ embeds: [embed] });
                 }
             }

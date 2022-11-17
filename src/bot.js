@@ -364,6 +364,10 @@ client.on(`messageCreate`, async message => {
 			await claimBets(date);
 			return await message.channel.send(`Done`);
 			break;
+
+		case `update-peak`:
+			require(`./methods/update-peak-positions.js`)(con);
+			break;
 	}
 });
 
@@ -384,6 +388,8 @@ client.on(`interactionCreate`, async interaction => {
 	let localTime = new Date(new Date().getTime() + offset * 3600000);
 
 	if (runDatabase) {
+		await require(`./methods/update-peak-positions.js`)(con, interaction.user.id);
+
 		// Registering user on users database if not already
 		let user = await getUser(con, `users`, interaction.user.id), userExists = true;
 		if (!user) userExists = false;
@@ -604,6 +610,10 @@ function updateActivity() {
 	client.user.setActivity(activityText);
 }
 setInterval(updateActivity, 1000 * 60 * 30);
+
+setInterval(async () => {
+	await require(`./methods/update-peak-positions.js`)(con);
+}, 1000 * 60 * 60 * 10);
 
 // Every minute
 async function DonatorScores() {

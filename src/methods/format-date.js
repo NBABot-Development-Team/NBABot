@@ -28,6 +28,7 @@ module.exports = async (date, con = null, id = null) => {
 
 		// Adding 0s e.g. 1/1/2000 -> 01/01/2000
 		if (date.split(`/`)[0].length == 1) date = `0${date.split('/')[0]}/${date.split('/')[1]}/${date.split('/')[2]}`;
+		if (!date.split(`/`)[0] || !date.split(`/`)[1] || !date.split(`/`)[2]) resolve();
 		if (date.split(`/`)[1].length == 1) date = `${date.split('/')[0]}/0${date.split('/')[1]}/${date.split('/')[2]}`;
 
 		// Accounting for 22 -> 2022

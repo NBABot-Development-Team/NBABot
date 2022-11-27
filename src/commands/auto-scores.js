@@ -21,7 +21,7 @@ const query = require(`../methods/database/query.js`);
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName(`auto-scores`)
-		.setDescription(`(for donators) choose where you want your automated scores to be`)
+		.setDescription(`(Finals MVP donator only) choose where you want your automated scores to be`)
         .addStringOption(option => option.setName(`option`).setDescription(`Whether you want to start or stop live scores in this channel.`).addChoices({
             name: `Start`,
             value: `start`
@@ -37,7 +37,7 @@ module.exports = {
         user = user[0];
 
         // Checking if user is donator
-        if (user.Donator != `y` && user.Donator != `f`) return await interaction.reply(`Only Finals MVP donators can use auto scores. To learn more, use \`/donate\`.`);
+        if (user.Donator != `y` && user.Donator != `f`) return await interaction.reply(`Only Finals MVP donators can use auto scores that update every 60 seconds. To learn more, use \`/donate\`.\nThe NBABot Support Server (https://invite.gg/nbabot) supports live scores which update every 20 minutes through the #live-scores channel.`);
         if (user.Donator == `y`) return await interaction.reply(`This feature is only available to Finals MVP Donators.`);
 
         // Seeing whether start/stop

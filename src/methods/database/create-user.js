@@ -7,7 +7,7 @@ module.exports = async (con, table, ID) => {
                 // Date format - u (us - mmddyyyy), i (international ddmmyyyy)
                 con.query(`INSERT INTO users VALUES ("${ID}", 10.00, "NBA", "Use /settings description to set your description", 0, 0, "n", "y", "", "d", "u", NULL, "0", "y", NULL, "y", "");`, async (e, r, f) => {
                     if (e) console.log(e);
-                    await require(`../methods/update-peak-positions.js`)(con, ID);
+                    await require(`../update-peak-positions.js`)(con, ID);
                     resolve();
                 });
                 break;

@@ -141,6 +141,7 @@ module.exports = {
 		const collector = interaction.channel.createMessageComponentCollector({ filter });
 		collector.on(`collect`, async i => {
 			collector.resetTimer();
+            await require(`../methods/add-to-button-count.js`)(con);
 
             // Changing years if needed
             if (parseInt(i.customId.split(`|`)[1]) == 11 && i.customId.split(`|`)[2] == `l`) {

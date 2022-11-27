@@ -2,6 +2,8 @@
 const Discord = require(`discord.js`);
 const mysql = require(`mysql`);
 const fs = require(`fs`);
+const fetch = require(`node-fetch`);
+const cheerio = require(`cheerio`);
 
 const client = new Discord.Client({ intents: [Discord.Intents.FLAGS.GUILDS, Discord.Intents.FLAGS.GUILD_MESSAGES] });
 
@@ -37,12 +39,14 @@ client.on(`ready`, async () => {
     Scores();
     Transactions();
     News();
-    // Injuries();
+    PlayerNews();
+    Injuries();
 
     setInterval(Scores, 1000 * 60 * 10);
     setInterval(Transactions, 1000 * 60 * 5);
     setInterval(News, 1000 * 60 * 60);
-    // setInterval(Injuries, 1000 * 60 * 5);
+    setInterval(PlayerNews, 1000 * 60 * 5);
+    setInterval(Injuries, 1000 * 60 * 5);
 });
 
 // Every 5 minutes
@@ -430,8 +434,71 @@ async function News() {
     }
 
     await query(con, `INSERT INTO news VALUES ('${new Date().toISOString().substring(0, 10).split(`-`).join(``)}', 'y');`);
+
+    // Getting current season
+    delete require.cache[require.resolve(`./cache/today.json`)];
+    const seasonScheduleYear = require(`./cache/today.json`).seasonScheduleYear;
+
+    let json = await getHTML(`https://www.espn.com/nba/standings/`);
+
+    json = json.substring(json.search(`{"app":`), json.length);
+    json = json.substring(0, json.search(`};`) + 1); 
+    json = JSON.parse(json);
+    json = json.page.content.standings.groups.groups;
+
+    let embed2 = new Discord.MessageEmbed()
+        .setTitle(`__${seasonScheduleYear}-${seasonScheduleYear + 1} League Standings:__`)
+        .setColor(teamColors.NBA);
+        
+    let w = 10, l = 6, g = 4, s = 8;
+
+    for (var k = 0; k < json.length; k++) {
+        let description = `\`     Team    W-L  PCT   GB  STR\`\n`;
+
+        let teams = json[k].standings;
+        
+        let top = 0;
+        for (var i = 0; i < teams.length; i++) {
+            let len = teams[i].stats[w].length + teams[i].stats[l].length + 1;
+            if (len > top) top = len;
+        }
+        for (var i = 0; i < teams.length; i++) {
+            let solutions = { "UTAH": "UTA", "GS": "GSW", "NY": "NYK", "SA": "SAS", "NO": "NOP", "WSH": "WAS" };
+            if (solutions[teams[i].team.abbrev]) teams[i].team.abbrev = solutions[teams[i].team.abbrev];
+            if (teams[i].stats[g] == `-`) teams[i].stats[g] = `0`;
+
+            let team = teams[i];
+            let record = ``;
+            if (team.stats[w].length + team.stats[l].length + 1 < top) {
+                for (var j = 0; j < top - (team.stats[w].length + team.stats[l].length + 1); j++) {
+                    record += ` `;
+                }
+                record += `${team.stats[w]}-${team.stats[l]}`;
+            } else record = `${team.stats[w]}-${team.stats[l]}`;
+
+            let percentage = ((parseInt(team.stats[w]) / (parseInt(team.stats[w]) + parseInt(team.stats[l]))) * 100).toPrecision(3);
+            if (parseInt(team.stats[w]) + parseInt(team.stats[l]) == 0) percentage = `0.00`;
+            else if (parseInt(team.stats[l]) == 0) percentage = `100 `;
+
+            if (parseFloat(team.stats[g]) - Math.floor(parseFloat(team.stats[g])) == 0) team.stats[g] = `${team.stats[g]}.0`;
+
+            if (team.stats[s] == `-`) team.stats[s] = `- `;
+            description += `\`${(i + 1 < 10) ? `0${i + 1}` : i + 1}) \`${teamEmojis[team.team.abbrev]}\`${team.team.abbrev} | ${record} ${percentage} ${(parseFloat(team.stats[g]) < 10) ? `0${parseFloat(team.stats[g]).toFixed(1)}` : parseFloat(team.stats[g]).toFixed(1)}  ${team.stats[s]}\`\n`;
+        }
+
+        embed2.addField(`${json[k].name} Standings:`, description);
+    }
+
+    let channel2 = await client.channels.fetch(config.standingsChannel);
+    let message2 = await channel2.send({ embeds: [embed2] });
+    try {
+        await message2.crosspost();
+    } catch (e) {
+        // ...
+    }
 }
 
+/*
 // Every 10 minutes
 async function Injuries() { // Not finished yets
     // let teams = ['ATL', 'BOS', 'BKN', 'CHA', 'CHI', 'CLE', 'DAL', 'DEN', 'DET', 'GSW', 'HOU', 'IND', 'LAC', 'LAL', 'MEM', 'MIA', 'MIL', 'MIN', 'NOP', 'NYK', 'OKC', 'ORL', 'PHI', 'PHX', 'POR', 'SAC', 'SAS', 'TOR', 'UTA', 'WAS'];
@@ -498,6 +565,166 @@ async function Injuries() { // Not finished yets
     } catch (e) {
         // ...
     }
-} 
+}*/
+
+// Every 5 minutes
+async function PlayerNews() {
+    // Checking if the bot can send another message
+    let lastMessage = await query(con, `SELECT * FROM player_news WHERE Description = "lastmessage";`);
+    lastMessage = lastMessage[0].Time;
+    if (new Date().getTime() < (lastMessage + 1000 * 60 * 5)) return;
+
+    let a = await fetch(`https://www.rotowire.com/basketball/news.php`);
+    a = await a.text();
+    let $ = cheerio.load(a);
+
+    let names = [], headlines = [], descriptions = [];
+
+    $(`a.news-update__player-link`).each((i, e) => {
+        names.push($(e).text());
+    });
+    
+    $(`div.news-update__headline`).each((i, e) => {
+        headlines.push($(e).text());
+    });
+
+    $(`div.news-update__news`).each((i, e) => {
+        descriptions.push($(e).text());
+    });
+
+    let embed = new Discord.MessageEmbed()
+        .setColor(teamColors.NBA)
+        .setTimestamp()
+        .setAuthor({ name: `NBABot (nbabot.js.org)`, url: `https://nbabot.js.org/`, iconURL: `https://raw.githubusercontent.com/NBABot-Development-Team/NBABot/master/src/assets/logo.png` });
+
+    let fieldsAdded = 0;
+
+    mainLoop: for (var i = 0; i < descriptions.length; i++) {
+        if (fieldsAdded >= 25) break mainLoop; // Embeds can only have 25 fields
+        // Seeing if the update description is already in the database
+        let a = await query(con, `SELECT * FROM player_news WHERE Description = "${descriptions[i]}";`);
+
+        let aExists = true;
+        if (!a) aExists = false;
+        else if (a.length == 0) aExists = false;
+
+        if (aExists) { 
+            // Seeing if the last mention was ages ago (>1 day ago) - then it must be new
+            if (new Date(a[0].Time).getTime() + 1000 * 60 * 60 * 24 * 10 > new Date().getTime()) {
+                continue mainLoop;
+            }
+        }
+
+        embed.addField(`__${names[i]} ${headlines[i]}__`, descriptions[i]);
+        fieldsAdded++;
+
+        if (aExists) {
+            await query(con, `UPDATE player_news SET Time = ${new Date().getTime()} WHERE Description = "${descriptions[i]}";`);
+        } else await query(con, `INSERT INTO player_news VALUES (${new Date().getTime()}, "${descriptions[i]}");`);
+    }
+
+    if (fieldsAdded > 0) {
+        let channel = await client.channels.fetch(config.playerNewsChannel);
+        let message = await channel.send({ embeds: [embed] });
+        await query(con, `UPDATE player_news SET Time = ${new Date().getTime()} WHERE Description = "lastmessage";`);
+        try {
+            await message.crosspost();
+        } catch (e) {
+            // ...
+        }
+    }
+}
+
+async function Injuries() {
+    // https://www.rotowire.com/basketball/news.php?team=PHX&view=injuries
+    // https://www.rotowire.com/basketball/news.php?view=injuries
+
+    let channels = config.injuryChannels;
+
+    teamLoop: for (var team in channels) {
+        // Checking if the bot can send another message
+        let lastMessage = await query(con, `SELECT * FROM player_injuries_${team} WHERE Description = "lastmessage";`);
+        lastMessage = lastMessage[0].Time;
+        if (new Date().getTime() < (lastMessage + 1000 * 60 * 5)) continue teamLoop;
+
+        let a = await fetch(`https://www.rotowire.com/basketball/news.php?view=injuries${(team != `ALL`) ? `&team=${team}` : ``}`);
+        a = await a.text();
+        let $ = cheerio.load(a);
+
+        let names = [], headlines = [], descriptions = [];
+
+        $(`a.news-update__player-link`).each((i, e) => {
+            names.push($(e).text());
+        });
+        
+        $(`div.news-update__headline`).each((i, e) => {
+            headlines.push($(e).text());
+        });
+
+        $(`div.news-update__news`).each((i, e) => {
+            descriptions.push($(e).text());
+        });
+
+        let embed = new Discord.MessageEmbed()
+            .setColor((team == `ALL`) ? teamColors.NBA : teamColors[team])
+            .setTimestamp()
+            .setAuthor({ name: `NBABot (nbabot.js.org)`, url: `https://nbabot.js.org/`, iconURL: `https://raw.githubusercontent.com/NBABot-Development-Team/NBABot/master/src/assets/logo.png` });
+
+        let fieldsAdded = 0;
+
+        mainLoop: for (var i = 0; i < descriptions.length; i++) {
+            if (fieldsAdded >= 25) break mainLoop; // Embeds can only have 25 fields
+            // Seeing if the update description is already in the database
+            
+            // Santizing descriptions[i]
+            if (descriptions[i].includes(`"`)) {
+                descriptions[i] = descriptions[i].split(``);
+                for (var j = 0; j < descriptions[i].length; j++) {
+                    if (descriptions[i][j] == `"`) descriptions[i][j] = `'`;
+                }
+                descriptions[i] = descriptions[i].join(``);
+            }
+            let a = await query(con, `SELECT * FROM player_injuries_${team} WHERE Description = "${descriptions[i]}";`);
+
+            let aExists = true;
+            if (!a) aExists = false;
+            else if (a.length == 0) aExists = false;
+
+            if (aExists) { 
+                // Seeing if the last mention was ages ago (>1 day ago) - then it must be new
+                if (new Date(a[0].Time).getTime() + 1000 * 60 * 60 * 24 * 10 > new Date().getTime()) {
+                    continue mainLoop;
+                }
+            }
+
+            embed.addField(`__${names[i]} ${headlines[i]}__`, descriptions[i]);
+            fieldsAdded++;
+
+            if (aExists) {
+                await query(con, `UPDATE player_injuries_${team} SET Time = ${new Date().getTime()} WHERE Description = "${descriptions[i]}";`);
+            } else await query(con, `INSERT INTO player_injuries_${team} VALUES (${new Date().getTime()}, "${descriptions[i]}");`);
+        }
+
+        if (fieldsAdded > 0) {
+            let channel = await client.channels.fetch(channels[team]);
+            let message = await channel.send({ embeds: [embed] });
+            await query(con, `UPDATE player_injuries_${team} SET Time = ${new Date().getTime()} WHERE Description = "lastmessage";`);
+            try {
+                await message.crosspost();
+            } catch (e) {
+                // ...
+            }
+        }
+    }
+}
+
+async function createTables() {
+    let teams = Object.keys(config.injuryChannels);
+
+    for (var i = 0; i < teams.length; i++) {
+        await query(con, `CREATE TABLE player_injuries_${teams[i]} (Time bigint, Description varchar(512));`);
+        await query(con, `INSERT INTO player_injuries_${teams[i]} VALUES (${new Date().getTime()}, "lastmessage");`);
+    }
+}
 
 client.login(config.token2);

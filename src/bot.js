@@ -9,6 +9,7 @@ const fs = require(`fs`);
 const mysql = require(`mysql`);
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v9');
+const { ChartJSNodeCanvas } = require(`chartjs-node-canvas`);
 
 // Assets
 const teamColors = require(`./assets/teams/colors.json`);
@@ -368,20 +369,202 @@ client.on(`messageCreate`, async message => {
 		case `update-peak`:
 			require(`./methods/update-peak-positions.js`)(con);
 			break;
+
+		case `stats-graph`:
+			args.shift(); args.shift();
+			let temp = [], last5 = false, last10 = false, last15 = false;
+			for (var i = 0; i < args.length; i++) {
+				if (args[i] == `total`) temp[i] = `Total`;
+				else if (args[i] == `last5`) last5 = true;
+				else if (args[i] == `last10`) last10 = true;
+				else if (args[i] == `last15`) last15 = true;
+				else temp.push(args[i]);
+			}
+			args = [ ...temp ];
+			let c = [];
+			if (!args) c = [`Total`];
+			else if (args.length == 0) c = [`Total`];
+			else c = [ ...args ];
+
+			let colors = [`#008724`, `#007187`, `#003287`, `#380087`, `#87007A`, `#870000`];
+
+			const width = 1500;
+			const height = 500;
+			const backgroundColour = `white`;
+			const chart = new ChartJSNodeCanvas({ width, height, backgroundColour });
+
+			let stats_all = await query(con, `SELECT * FROM stats;`);
+
+			let l = [], d = [];
+			for (var k = 0; k < c.length; k++) {
+				let labels = [], data = [];
+				dayLoop: for (var i = 0; i < stats_all.length; i++) {
+					if (last5 && i < (stats_all.length - 5)) continue dayLoop;
+					if (last10 && i < (stats_all.length - 10)) continue dayLoop;
+					if (last15 && i < (stats_all.length - 15)) continue dayLoop;
+					let s = stats_all[i];
+					labels.push(s.Date.split(`d`).join(``));
+					data.push(s[c[k]]);
+				}
+				l.push(labels);
+				d.push(data);
+			}
+
+			const configuration = {
+				type: `line`,
+				data: {
+					labels: l[0],
+					datasets: []
+				}
+			};
+
+			/* [{
+				label: `${c} stats`,
+				data: data,
+				fill: false,
+				borderColor: `rgb(75, 192, 192)`,
+				tension: 0.1
+			}] */
+
+			for (var i = 0; i < c.length; i++) {
+				configuration.data.datasets.push({
+					label: c[i],
+					data: d[i],
+					fill: false,
+					borderColor: colors[i],
+					tension: 0.1
+				});
+			}
+
+			const image = await chart.renderToBuffer(configuration, `image/png`);
+			const img = new Discord.MessageAttachment(image, `stats.png`);
+			let embed = new Discord.MessageEmbed()
+                .setColor(teamColors.NBA)
+                .setImage(`attachment://stats.png`);
+
+			return await message.channel.send({ embeds: [embed], files: [img] });
+			break;
+
+		case `stats-graph2`: // Same but with double axes games for that day
+			args.shift(); args.shift();
+			for (var i = 0; i < args.length; i++) {
+				if (args[i] == `total`) args[i] = `Total`;
+			}
+			let c2 = [];
+			if (!args) c2 = [`Total`];
+			else if (args.length == 0) c2 = [`Total`];
+			else c2 = [ ...args ];
+			c2 = c2[0];
+
+			let colors2 = [`#008724`, `#007187`, `#003287`, `#380087`, `#87007A`, `#870000`];
+
+			let width2 = 1500;
+			let height2 = 500;
+			let backgroundColour2 = `white`;
+			let chart2 = new ChartJSNodeCanvas({ width: width2, height: height2, backgroundColour: backgroundColour2 });
+
+			let stats_all2 = await query(con, `SELECT * FROM stats;`);
+
+			let l2 = [], d2 = [];
+			for (var i = 0; i < stats_all2.length; i++) {
+				let s = stats_all2[i];
+				l2.push(s.Date.split(`d`).join(``));
+				d2.push(s[c2]);
+			}
+			
+			// Getting amount of games on that day;
+			let g = [];
+			for (var i = 0; i < l2.length; i++) {
+				if (fs.existsSync(`./cache/${l2[i]}/scoreboard.json`)) {
+					let file;
+					try {
+						file = require(`./cache/${l2[i]}/scoreboard.json`);
+					} catch (e) {
+						// ...
+					}
+
+					if (file?.games) {
+						g.push(file.games.length);
+					} else g.push(0);
+				}
+			}
+
+			let configuration2 = {
+				type: `line`,
+				data: {
+					labels: l2,
+					datasets: [
+						{
+							label: c2,
+							data: d2,
+							fill: false,
+							borderColor: colors2[0],
+							tension: 0.1,
+							yAxisID: `y`
+						},
+						{
+							label: `games`,
+							data: g,
+							fill: false,
+							borderColor: colors2[2],
+							tension: 0.1,
+							yAxisID: `y1`
+						}
+					]
+				},
+				options: {
+					scales: {
+						y: {
+							type: `linear`,
+							display: true,
+							position: `left`
+						},
+						y1: {
+							type: `linear`,
+							display: true,
+							position: `right`,
+							grid: {
+								drawOnChartArea: false
+							}
+						}
+					}
+				}
+			};
+
+			/* [{
+				label: `${c} stats`,
+				data: data,
+				fill: false,
+				borderColor: `rgb(75, 192, 192)`,
+				tension: 0.1
+			}] */
+
+			let image2 = await chart2.renderToBuffer(configuration2, `image/png`);
+			let img2 = new Discord.MessageAttachment(image2, `stats.png`);
+			let embed2 = new Discord.MessageEmbed()
+                .setColor(teamColors.NBA)
+                .setImage(`attachment://stats.png`);
+
+			return await message.channel.send({ embeds: [embed2], files: [img2] });
+			break;
 	}
 });
 
 
 // On / command
 client.on(`interactionCreate`, async interaction => {
-	// Refreshing config.json
-	delete require.cache[require.resolve(`./config.json`)];
-	config = require(`./config.json`);
-
 	if (!interaction.isCommand()) return;
 
 	const command = client.commands.get(interaction.commandName);
 	if (!command) return;
+
+	// Refreshing config.json
+	delete require.cache[require.resolve(`./config.json`)];
+	config = require(`./config.json`);
+
+	// Refrehsing hints.json
+	delete require.cache[require.resolve(`./assets/hints.json`)];
+	let hints = require(`./assets/hints.json`).hints;
 
 	// Finding current time
 	let offset = 13; // Converts logging stuff to NZ time, feel free to change this utc offset
@@ -540,6 +723,20 @@ client.on(`interactionCreate`, async interaction => {
 		}
 		if (user.Betting == `n`) betting = false;
 
+		// Checking if user can recieve tips
+		if (user.Hints) {
+			if (user.Hints == `y`) {
+				if (Math.random() <= 0.15) { // 15% probability of tip
+					let embed = new Discord.MessageEmbed()
+						.setDescription(hints[require(`./methods/randint.js`)(0, hints.length - 1)])
+						.setFooter({ text: `Turn off tips with "/settings tips off".` })
+						.setColor(teamColors.NBA);
+					await interaction.channel.send({ embeds: [embed] });
+				}
+			}
+		}
+
+
 		try {
 			await command.execute({ interaction, client, con, ad, betting, shardID });
 		} catch (error) {
@@ -607,7 +804,7 @@ setInterval(methods.updateOddsNew, 1000 * 60 * 30);
 function updateActivity() {
 	delete require.cache[require.resolve(`./config.json`)];
 	let activityText = require(`./config.json`).activityText;
-	client.user.setActivity(activityText);
+	client.user.setActivity(activityText, { type: `LISTENING` });
 }
 setInterval(updateActivity, 1000 * 60 * 30);
 

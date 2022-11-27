@@ -35,6 +35,13 @@ module.exports = {
             requestedDate = interaction.options.getString(`date`);
         let team, teamLocation, amount, date, gameName, payout;
 
+        // If team wrong, trying switching around amount and team and seeing if that works
+        if (!formatTeam(requestedTeam) && formatTeam(requestedAmount)) {
+            let a = [requestedTeam, requestedAmount];
+            requestedTeam = a[1];
+            requestedAmount = a[0];
+        }
+
         // Getting user data
         let user = await getUser(con, `users`, interaction.user.id);
         user = user[0];
@@ -62,36 +69,50 @@ module.exports = {
         }
 
         // Seeing if cache can be used
-        let json;
-        if (today) {
-            json = require(`../cache/${currentDate}/scoreboard.json`);
-        } else {
-            json = await getJSON(`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json`);
+        async function checkForGame(date, first = true) {
+            let json;
+            if (today && first) {
+                json = require(`../cache/${currentDate}/scoreboard.json`);
+            } else {
+                json = await getJSON(`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json`);
 
-            let dates = json.leagueSchedule.gameDates;
-            for (var i = 0; i < dates.length; i++) {
-                let d = new Date(dates[i].gameDate);
-                d = d.toISOString().substring(0, 10).split(`-`).join(``);
-                if (d == date) {
-                    json = dates[i];
+                let dates = json.leagueSchedule.gameDates;
+                for (var i = 0; i < dates.length; i++) {
+                    let d = new Date(dates[i].gameDate);
+                    d = d.toISOString().substring(0, 10).split(`-`).join(``);
+                    if (d == date) {
+                        json = dates[i];
+                    }
+                }
+            }
+
+            // Seeing if the game has started
+            for (var i = 0; i < json.games.length; i++) {
+                let c = json.games[i];
+                if (team == c.awayTeam.teamTricode) {
+                    if (c.gameStatus != 1 && interaction.user.id != `401649168948396032`) return await interaction.reply({ content: `The game \`${c.awayTeam.teamTricode} @ ${c.homeTeam.teamTricode}\` on \`${date.substring(4, 6)}/${date.substring(6, 8)}/${date.substring(0, 4)}\` has already started so you cannot bet on it.` });
+                    teamLocation = `awayTeam`;
+                    gameName = `${c.awayTeam.teamTricode} @ ${c.homeTeam.teamTricode}`;
+                } else if (team == c.homeTeam.teamTricode) {
+                    if (c.gameStatus != 1 && interaction.user.id != `401649168948396032`) return await interaction.reply({ content: `The game \`${c.awayTeam.teamTricode} @ ${c.homeTeam.teamTricode}\` on \`${date.substring(4, 6)}/${date.substring(6, 8)}/${date.substring(0, 4)}\` has already started so you cannot bet on it.` });
+                    teamLocation = `homeTeam`;
+                    gameName = `${c.awayTeam.teamTricode} @ ${c.homeTeam.teamTricode}`;
                 }
             }
         }
 
-        // Seeing if the game has started
-        for (var i = 0; i < json.games.length; i++) {
-            let c = json.games[i];
-            if (team == c.awayTeam.teamTricode) {
-                if (c.gameStatus != 1 && interaction.user.id != `401649168948396032`) return await interaction.reply({ content: `The game \`${c.awayTeam.teamTricode} @ ${c.homeTeam.teamTricode}\` on \`${date.substring(4, 6)}/${date.substring(6, 8)}/${date.substring(0, 4)}\` has already started so you cannot bet on it.` });
-                teamLocation = `awayTeam`;
-                gameName = `${c.awayTeam.teamTricode} @ ${c.homeTeam.teamTricode}`;
-            } else if (team == c.homeTeam.teamTricode) {
-                if (c.gameStatus != 1 && interaction.user.id != `401649168948396032`) return await interaction.reply({ content: `The game \`${c.awayTeam.teamTricode} @ ${c.homeTeam.teamTricode}\` on \`${date.substring(4, 6)}/${date.substring(6, 8)}/${date.substring(0, 4)}\` has already started so you cannot bet on it.` });
-                teamLocation = `homeTeam`;
-                gameName = `${c.awayTeam.teamTricode} @ ${c.homeTeam.teamTricode}`;
+        await checkForGame(date);
+
+        if (!teamLocation) {
+            // Checking games after original date (could be tomorrow but no games on that date or date not rolled over yet)
+            let dateT = new Date(new Date(date.substring(0, 4), parseInt(date.substring(4, 6)) - 1, date.substring(6, 8)).getTime() + 1000 * 60 * 60 * 24).toISOString().substring(0, 10).split(`-`).join(``);
+            await checkForGame(dateT, false);
+            if (!teamLocation) {
+                return await interaction.reply({ content: `\`${team}\` did not play on \`${date.substring(4, 6)}/${date.substring(6, 8)}/${date.substring(0, 4)}\`.` });
+            } else {
+                date = dateT;
             }
         }
-        if (!teamLocation) return await interaction.reply({ content: `\`${team}\` did not play on \`${date.substring(4, 6)}/${date.substring(6, 8)}/${date.substring(0, 4)}\`.` });
 
         // Seeing if odds are available
         let odds, teams;

@@ -81,7 +81,18 @@ module.exports = {
             subcommand
                 .setName(`betting-channel`)
                 .setDescription(`(Manage server permission required) Dedicate one channel for betting functionality.`)
-                .addChannelOption(option => option.setName(`channel`).setDescription(`Dedicated betting channel. Leave blank to allow betting functionality for the whole server.`))),
+                .addChannelOption(option => option.setName(`channel`).setDescription(`Dedicated betting channel. Leave blank to allow betting functionality for the whole server.`)))
+        .addSubcommand(subcommand => 
+            subcommand
+                .setName(`tips`)
+                .setDescription(`Turn tips on/off.`)
+                .addStringOption(option => option.setName(`choice`).setDescription(`On for tips, Off for no tips.`).addChoices({
+                    name: `On`,
+                    value: `on`
+                }).addChoices({
+                    name: `Off`,
+                    value: `off`
+                }).setRequired(true))),
     
 	async execute(variables) {
 		let { con, interaction } = variables;
@@ -221,7 +232,18 @@ module.exports = {
                     await query(con, `UPDATE guilds SET BettingChannel = "${channel.id}" WHERE ID = "${interaction.guild.id}";`);
                     return await interaction.reply(`**Success!** Betting is now only enabled in <#${channel.id}>.`);
                 }
+                break;
 
+            case `tips`:
+                let choice4 = interaction.options.getString(`choice`);
+
+                if (choice4 == `on`) {
+                    await query(con, `UPDATE users SET Hints = "y" WHERE ID = "${interaction.user.id}";`);
+                    return await interaction.reply(`**Success!** Tips are now on.`);
+                } else {
+                    await query(con, `UPDATE users SET Hints = "n" WHERE ID = "${interaction.user.id}";`);
+                    return await interaction.reply(`**Success!** Tips are now off.`);
+                }
                 break;
 
             default:

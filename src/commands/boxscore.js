@@ -246,6 +246,7 @@ module.exports = {
 		const collector = interactionSource.channel.createMessageComponentCollector({ filter });
 		collector.on(`collect`, async i => {
 			collector.resetTimer();
+			await require(`../methods/add-to-button-count.js`)(con);
 
 			mode = (i.customId.split(`-`)[0] == requestedTeam);
 			

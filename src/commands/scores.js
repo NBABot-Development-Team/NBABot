@@ -266,7 +266,7 @@ module.exports = {
 			if (runDatabase) {
 				let user = await query(con, `SELECT * FROM users WHERE ID = "${interaction.user.id}"`);
 				user = user[0];
-				if (user.Betting == "y" || !betting) {
+				if (user.Betting == "y" && betting) {
 					let odds;
 					if (fs.existsSync(`./cache/${date}/`)) {
 						if (fs.existsSync(`./cache/${date}/odds.json`)) {

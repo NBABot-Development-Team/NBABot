@@ -53,9 +53,9 @@ module.exports = {
 		}
 
 		let embed = new Discord.MessageEmbed()
-			.setTitle(`Help for NBABot`)
+			.setTitle(`__Help for NBABot__`)
 			.setColor(teamColors.NBA)
-			.setDescription(`Type / and select NBABot to see NBABot's commands.\n\n**Further questions?** Join the support server below or contact chig#4519 directly.\n**Want to support NBABot?** Donation via patreon below would be immensely appreciated.`)
+			.setDescription(`__Type / and select NBABot to see NBABot's commands.__\n\n**Further questions?** Join the support server below or contact chig#4519 directly.\n**Want to support NBABot?** Donation via patreon below would be immensely appreciated.`)
 			.addField(`NBA Commands`, `\`/${ordered.nba.join(`\` \`/`)}\``)
 			.addField(`Other Commands`, `\`/${ordered.other.join(`\` \`/`)}\``)
 			.setFooter({ text: `NBABot, made by chig#4519 and freejstn#0666` });

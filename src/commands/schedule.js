@@ -21,7 +21,7 @@ module.exports = {
         .addStringOption(option => option.setName(`team`).setDescription(`A team, e.g. PHX or Lakers.`).setRequired(true)),
 
 	async execute(variables) {
-		let { interaction, ad } = variables;
+		let { interaction, ad, con } = variables;
 
         let team = interaction.options.getString(`team`);
         team = formatTeam(team);
@@ -107,7 +107,7 @@ module.exports = {
 				.addComponents(
 					new Discord.MessageButton()
 						.setCustomId(`${team}|${monthBefore}|l|${timestamp}`) // sets customId to date which button goes to
-						.setLabel(months[monthBefore])
+						.setLabel(`← ${months[monthBefore]}`)
 						.setStyle(`PRIMARY`),
 
 					new Discord.MessageButton()
@@ -117,7 +117,7 @@ module.exports = {
 
 					new Discord.MessageButton()
 						.setCustomId(`${team}|${monthAfter}|r|${timestamp}`)
-						.setLabel(months[monthAfter])
+						.setLabel(`${months[monthAfter]} →`)
 						.setStyle(`PRIMARY`),
 				);
 

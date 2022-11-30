@@ -69,7 +69,7 @@ module.exports = {
         }
         
         let embed = new Discord.MessageEmbed()
-            .setTitle(`Odds for ${dateObject.toDateString()}`)
+            .setTitle(`__Odds for ${dateObject.toDateString()}__`)
             .setColor(0xff4242)
             .setDescription(`To place a bet, use \`/bet\`.\nMake sure to claim the bet after the game has finished with \`/claim\`.\nTo change the odds format, use \`/settings odds-format us/decimal\`.\n**Turn betting functionality off with \`/settings betting off\`.**`);
 

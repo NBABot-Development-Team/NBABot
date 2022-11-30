@@ -59,31 +59,79 @@ module.exports = async (date, userSpecified, teamSpecified) => {
                 bet = bet[`d${date}`].split(`,`);
 
                 betLoop: for (var j = 0; j < bet.length; j++) { // Cycling through each bet on that date
-                    let details = bet[j].split(`|`);
-                    if (teamSpecified) {
-                        if (teamSpecified == details[0]) continue betLoop;
-                    }
+                    if (bet[j].includes(`+`)) { // Parlay
+                        let details = bet[j].split(`|`);
+                        let teams = details[0].split(`+`);
+                        let allCorrect = true, allDone = true, lostTeam;
 
-                    gameLoop: for (var k = 0; k < json.games.length; k++) {
-                        let location;
-                        if (json.games[k].awayTeam.teamTricode == details[0] && json.games[k].gameStatus == 3) location = `awayTeam`;
-                        else if (json.games[k].homeTeam.teamTricode == details[0] && json.games[k].gameStatus == 3) location = `homeTeam`;
-                        if (!location) continue gameLoop;
+                        gameLoop: for (var k = 0; k < json.games.length; k++) {
+                            let c = json.games[k];
+                            if (teams.includes(c.awayTeam.teamTricode) || teams.includes(c.awayTeam.teamTricode)) {
+                                // Game finished?
+                                if (c.gameStatus < 3) {
+                                    // Game not done, so whole parlay cannot be claimed
+                                    allDone = false;
+                                    break gameLoop;
+                                }
 
-                        if (parseInt(json.games[k][location].score) > parseInt(json.games[k][(location == `awayTeam` ? `homeTeam` : `awayTeam`)].score)) { // Bet won
-                            user.Balance += parseFloat(details[2]);
-                            user.Correct++;
-                            description += `:green_square: ${teamEmojis[details[0]]} won, $${details[2]} gained.\n`;
-                        } else { // Bet lost
+                                // Game finished, did the chosen team lose?
+                                let location = (teams.includes(c.awayTeam.teamTricode)) ? `awayTeam` : `homeTeam`;
+                                let other = (location == `awayTeam`) ? `homeTeam` : `awayTeam`;
+                                if (c[location].score < c[other].score) {
+                                    // Chosen team lost so whole parlay invalid
+                                    allCorrect = false;
+                                    lostTeam = c[location].teamTricode;
+                                    break gameLoop;
+                                }
+                            }
+                        }
+
+                        if (!allDone) {
+                            // Not all done, so leave it for now
+                            continue betLoop;
+                        }
+
+                        if (!allCorrect) {
+                            description += `:red_square: ${teamEmojis[lostTeam]} lost, so whole parlay of ${teams.join(`, `)} lost → $0.00 gained.\n`;
                             user.Wrong++;
-                            description += `:red_square: ${teamEmojis[details[0]]} lost, $0.00 gained.\n`;
+                        } else {
+                            // Parlay correct! Give them the money
+                            description += `:green_square: ${teams.join(`, `)} won, $${details[2]} gained.`;
+                            user.Correct++;
+                            user.Balance += parseFloat(details[2]);
+                            user.Balance = parseFloat(user.Balance.toFixed(2));
                         }
 
                         betsClaimed++;
-                        
-                        bet.splice(j, 1);
 
-                        break gameLoop;
+                        bet.splice(j, 1);
+                    } else { // Normal bet
+                        let details = bet[j].split(`|`);
+                        if (teamSpecified) {
+                            if (teamSpecified == details[0]) continue betLoop;
+                        }
+
+                        gameLoop: for (var k = 0; k < json.games.length; k++) {
+                            let location;
+                            if (json.games[k].awayTeam.teamTricode == details[0] && json.games[k].gameStatus == 3) location = `awayTeam`;
+                            else if (json.games[k].homeTeam.teamTricode == details[0] && json.games[k].gameStatus == 3) location = `homeTeam`;
+                            if (!location) continue gameLoop;
+
+                            if (parseInt(json.games[k][location].score) > parseInt(json.games[k][(location == `awayTeam` ? `homeTeam` : `awayTeam`)].score)) { // Bet won
+                                user.Balance += parseFloat(details[2]);
+                                user.Correct++;
+                                description += `:green_square: ${teamEmojis[details[0]]} won, $${details[2]} gained.\n`;
+                            } else { // Bet lost
+                                user.Wrong++;
+                                description += `:red_square: ${teamEmojis[details[0]]} lost, $0.00 gained.\n`;
+                            }
+
+                            betsClaimed++;
+                            
+                            bet.splice(j, 1);
+
+                            break gameLoop;
+                        }
                     }
                 }
 

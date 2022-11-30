@@ -731,7 +731,12 @@ client.on(`interactionCreate`, async interaction => {
 						.setDescription(hints[require(`./methods/randint.js`)(0, hints.length - 1)])
 						.setFooter({ text: `Turn off tips with "/settings tips off".` })
 						.setColor(teamColors.NBA);
-					await interaction.channel.send({ embeds: [embed] });
+						
+					try {
+						await interaction.channel.send({ embeds: [embed] });
+					} catch (e) {
+						// ...
+					}
 				}
 			}
 		}

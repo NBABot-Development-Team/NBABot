@@ -43,7 +43,8 @@ module.exports = {
         }).addChoices({
             name: `Playoffs`,
             value: `playoffs`
-        })),
+        }))
+        .addBooleanOption(option => option.setName(`advanced`).setDescription(`Whether you want advanced player statistics`)),
     
 	async execute(variables) {
 		let { interaction, ad, con } = variables;
@@ -54,6 +55,7 @@ module.exports = {
         let requestedName = interaction.options.getString(`name`),
             requestedSeason = interaction.options.getString(`season`),
             requestedMode = interaction.options.getString(`mode`),
+            useAdvanced = interaction.options.getBoolean(`advanced`),
             season, mode, switchedToRegularSeason = false, useNewAPI = false;
 
         // Getting today.json
@@ -213,7 +215,12 @@ module.exports = {
                     headers: require(`../config.json`).headers
                 }).then(async res => {
                     let a = await res.text();
-                    a = JSON.parse(a);
+                    try {
+                        a = JSON.parse(a);
+                    } catch (e) {
+                        console.log(a);
+                        resolve(null);
+                    }
                     resolve(a);
                 });
             });
@@ -227,6 +234,10 @@ module.exports = {
 
             if (details.source == `nba`) {
                 json = await getNewAPI(url);
+                if (!json) {
+                    if (update) await currentInteraction.update(`An error occurred fetching those statistics. [Code: F7]`);
+                    else await currentInteraction.editReply(`An error occurred fetching those statistics. [Code: F7]`);
+                }
                 try {
                     if (mode == `regular`) {
                         let seasons = json.resultSets[0].rowSet;
@@ -327,8 +338,29 @@ module.exports = {
                 // _plusMinus = (parseInt(p.plusMinus) < 0) ? p.plusMinus : `+${p.plusMinus}`;
             }
 
+            // Getting advanced stats
+            let advancedData = {};
+            if (mode != `career` && details.source == `nba` && useAdvanced) {
+                // https://stats.nba.com/stats/playerdashboardbygeneralsplits?DateFrom=&DateTo=&GameSegment=&LastNGames=0&LeagueID=00&Location=&MeasureType=Advanced&Month=0&OpponentTeamID=0&Outcome=&PORound=0&PaceAdjust=N&PerMode=PerGame&Period=0&PlayerID=${id}&PlusMinus=N&Rank=N&Season=${season}&SeasonSegment=&SeasonType=Regular%20Season&ShotClockRange=&Split=general&VsConference=&VsDivision=
+                let advanced = await getNewAPI(`https://stats.nba.com/stats/playerdashboardbygeneralsplits?DateFrom=&DateTo=&GameSegment=&LastNGames=0&LeagueID=00&Location=&MeasureType=Advanced&Month=0&OpponentTeamID=0&Outcome=&PORound=0&PaceAdjust=N&PerMode=PerGame&Period=0&PlayerID=${details.id}&PlusMinus=N&Rank=N&Season=${season}-${(parseInt(season) + 1).toString().substring(2, 4)}&SeasonSegment=&SeasonType=Regular%20Season&ShotClockRange=&Split=general&VsConference=&VsDivision=`);
+                let datas = [`NET_RATING`, `AST_PCT`, `AST_TO`, `USG_PCT`, `PACE`, `PIE`];
+                let locations = {};
+
+                advanced = advanced.resultSets[0];
+                for (var i = 0; i < advanced.headers.length; i++) {
+                    if (datas.includes(advanced.headers[i])) {
+                        locations[advanced.headers[i]] = i;
+                    }
+                }
+
+                let stats = advanced.rowSet[0];
+                for (var key in locations) {
+                    advancedData[key] = stats[locations[key]];
+                }
+            }
+
             // Setting up the canvas
-            const width = 800, height = 320;
+            const width = 800, height = ((Object.keys(advancedData).length > 0) ? 390 : 320);
             const c = canvas.createCanvas(width, height);
             const x = c.getContext(`2d`);
 
@@ -354,8 +386,8 @@ module.exports = {
             x.font = `25px WhitneyLight`;
             x.fillStyle = "#72767d";
             x.fillText(detailText, 10, 80);
+            x.fillText(`nbabot.js.org`, 652, (useAdvanced && Object.keys(advancedData).length > 0) ? 375 : 300);
             x.fillRect(0, 90, width, 5);
-            x.fillText(`nbabot.js.org`, 650, 300);
 
             x.font = `25px WhitneyBold`;
             x.fillStyle = /*`#E56020`*/ /*color*/ teamColors.NBA;
@@ -401,6 +433,26 @@ module.exports = {
             x.fillText(_tovp, 595, 170  + 60);
             x.fillText(p.g, 685, 170  + 60);
 
+            if (Object.keys(advancedData).length > 0) {
+                x.font = `25px WhitneyBold`;
+                x.fillStyle = teamColors.NBA;
+                x.fillText(`NET Rating`, 355, 270);
+                x.fillText(`AST%`, 530, 270);
+                x.fillText(`AST/TO`, 660, 270);
+                x.fillText(`USG%`, 15, 340);
+                x.fillText(`PACE`, 200, 340);
+                x.fillText(`PIE`, 390, 340);
+
+                x.font = `20px WhitneyLight`;
+                x.fillStyle = `#FFFFFF`;
+                x.fillText(advancedData[`NET_RATING`], 390, 300);
+                x.fillText((parseFloat(advancedData[`AST_PCT`]) * 100).toFixed(1), 550, 300);
+                x.fillText(advancedData[`AST_TO`], 685, 300);
+                x.fillText((parseFloat(advancedData[`USG_PCT`]) * 100).toFixed(1), 15, 370);
+                x.fillText(advancedData[`PACE`], 205, 370);
+                x.fillText((parseFloat(advancedData[`PIE`]) * 100).toFixed(1), 395, 370);
+            }
+
             // Headshot? https://cdn.nba.com/headshots/nba/latest/1040x760/${ID}.png
             // Trying to find player ID if BDL
             let allIDs = require(`../assets/players/nba/ids2.json`), headshot;
@@ -418,16 +470,14 @@ module.exports = {
             x.fillStyle = /*`#E56020`; color*/ teamColors.NBA;
             if (details.source == `nba`) {
                 x.fillText(`G Started`, 15, 210  + 60);
-                x.fillText(`Average GmSc`, 195, 210  + 60);
-                // x.fillText(`3 Doubles`, 355, 210  + 60);
-                // x.fillText(`Average GmSc`, 540, 210  + 60);
+                x.fillText(`Average GmSc`, 160, 210  + 60);
             } else x.fillText(`Average GmSc`, 15, 210  + 60);
 
             x.font = `20px WhitneyLight`;
             x.fillStyle = `#FFFFFF`;
             if (details.source == `nba`) {
                 x.fillText(p.gamesStarted, 15, 240  + 60);
-                x.fillText(_gmsc.toFixed(1), 195, 240  + 60);
+                x.fillText(_gmsc.toFixed(1), 200, 240  + 60);
                 // x.fillText(p.td3, 355, 240  + 60);
                 // x.fillText(_gmsc.toFixed(1), 540, 240  + 60);
             } else x.fillText(_gmsc.toFixed(1), 15, 240  + 60);
@@ -440,7 +490,7 @@ module.exports = {
                 .setImage(`attachment://${fileName}`);
 
             let row = null;
-            if (mode != `career` && (previous || next) && details.source == `nba`) { // Add buttons
+            if (mode != `career` && (previous || next) && details.source == `nba` && !useAdvanced) { // Add buttons
                 row = new Discord.MessageActionRow();
                 if (previous) {
                     row.addComponents(

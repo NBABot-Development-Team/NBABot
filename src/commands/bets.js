@@ -55,7 +55,7 @@ module.exports = {
             date = new Date(date.substring(0, 4), parseInt(date.substring(4, 6)) - 1, date.substring(6, 8));
 
             let str1 = `__${date.toDateString()} (${date2}):__`;
-            let str2 = ``;
+            let str2 = ``, str3 = ``;
 
             // e.g. OKC|10|29.30
 
@@ -98,17 +98,33 @@ module.exports = {
                     }
                 }
 
-                str2 += `\`$${parseFloat(details[1]).toFixed(2)}\` on ${teamEmojis[details[0]]}${(opponent) ? opponent : ``} (payout: \`$${parseFloat(details[2]).toFixed(2)}\`)${(startStr) ? startStr : ``}\n`;
+                let whoStr;
+                if (details[0].includes(`+`)) {
+                    whoStr = details[0].split(`+`).join(`, `);
+                } else whoStr = teamEmojis[details[0]];
+
+                let temp = str2;
+                let addStr = `\`$${parseFloat(details[1]).toFixed(2)}\` on ${whoStr}${(opponent && !details[0].includes(`+`)) ? opponent : ``} (payout: \`$${parseFloat(details[2]).toFixed(2)}\`)${(startStr) ? startStr : ``}\n`;
+                if ((temp += addStr).length >= 1024) {
+                    str3 += addStr;
+                } else str2 += addStr;
+                
                 totalPlaced += parseFloat(details[1]);
                 totalPayout += parseFloat(details[2]);
             }
             
             if (bets[key].split(`,`).length > 1) {
-                str2 += `Total placed: \`$${totalPlaced.toFixed(2)}\`, Total payout: \`$${totalPayout.toFixed(2)}\`.`
+                let temp = str2;
+                let addStr = `Total placed: \`$${totalPlaced.toFixed(2)}\`, Total payout: \`$${totalPayout.toFixed(2)}\`.`;
+                if ((temp += addStr).length >= 1024) {
+                    str3 += addStr;
+                } else str2 += addStr;
             }
 
             fields++;
             embed.addField(str1, str2);
+
+            if (str3) embed.addField(`...`, str3);
         }
 
         if (fields == 0) return await interaction.reply({ content: `You have no bets placed.` });

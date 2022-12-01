@@ -60,6 +60,7 @@ module.exports = {
         let odds;
         if (fs.existsSync(`./cache/${date}/odds.json`)) {
             try {
+                delete require.cache[require.resolve(`../cache/${date}/odds.json`)];
                 odds = require(`../cache/${date}/odds.json`);
             } catch (e) {
                 return await interaction.editReply(`Odds are not available for \`${new Date(`${date.substring(0, 4)}-${date.substring(4, 6)}-${date.substring(6, 8)}`).toDateString()}\`.`);
@@ -71,6 +72,7 @@ module.exports = {
         let games;
         if (fs.existsSync(`./cache/${date}/scoreboard.json`)) {
             try {
+                delete require.cache[require.resolve(`../cache/${date}/scoreboard.json`)];
                 games = require(`../cache/${date}/scoreboard.json`).games;
             } catch (e) {
                 return await interaction.editReply(`Scores are not available for \`${new Date(`${date.substring(0, 4)}-${date.substring(4, 6)}-${date.substring(6, 8)}`).toDateString()}\`.`);
@@ -94,11 +96,11 @@ module.exports = {
             gamesAvailable.push({
                 homeTeam: {
                     teamTricode: games[i].homeTeam.teamTricode,
-                    payout: vTeamPayout
+                    payout: hTeamPayout
                 },
                 awayTeam: {
                     teamTricode: games[i].awayTeam.teamTricode,
-                    payout: hTeamPayout
+                    payout: vTeamPayout
                 }
             });
         }

@@ -601,6 +601,16 @@ async function PlayerNews() {
 
     mainLoop: for (var i = 0; i < descriptions.length; i++) {
         if (fieldsAdded >= 25) break mainLoop; // Embeds can only have 25 fields
+
+        // Sanitizing description - replacing " with '
+        if (descriptions[i].includes(`"`)) {
+            descriptions[i] = descriptions[i].split(``);
+            for (var j = 0; j < descriptions[i].length; j++) {
+                if (descriptions[i][j] == `"`) descriptions[i][j] = `'`;
+            }
+            descriptions[i] = descriptions[i].join(``);
+        }
+
         // Seeing if the update description is already in the database
         let a = await query(con, `SELECT * FROM player_news WHERE Description = "${descriptions[i]}";`);
 

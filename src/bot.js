@@ -58,6 +58,11 @@ client.on(`ready`, async () => {
 	updateActivity();
 	await sortOutShards();
 
+	await cleanUpDateColumns(con);
+	setInterval(async () => {
+		await cleanUpDateColumns(con);
+	}, 1000 * 60 * 60); // Each hour
+
 	DonatorScores();
 	setInterval(DonatorScores, 1000 * 60);
 });
@@ -792,6 +797,7 @@ process.on(`message`, message => {
 // Updating cache
 const methods = require(`./methods/update-cache.js`);
 const claimBets = require('./methods/claim-bets');
+const cleanUpDateColumns = require(`./methods/clean-up-date-columns.js`);
 
 // Cache and updating stuff
 methods.updateDate();

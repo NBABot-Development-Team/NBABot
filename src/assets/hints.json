@@ -27,6 +27,9 @@
         "Want to get rid of NBABot's ads for yourself? Check out the bot's patreon [here](https://patreon.com/nbabot/).",
         "Want to get rid of NBABot's ads for your server? Check out the bot's patreon [here](https://patreon.com/nbabot/).",
         "Want to support NBABot's development? Check out the bot's patreon [here](https://patreon.com/nbabot/).",
-        "Want live scores which update every 20 minutes in your server? Follow the #live-scores channel in NBABot's support server - join with the link in `/help` or [here](https://invite.gg/nbabot)."
+        "Want live scores which update every 20 minutes in your server? Follow the #live-scores channel in NBABot's support server - join with the link in `/help` or [here](https://invite.gg/nbabot).",
+        "Want to change the `/player-stats` format? Use `/settings stats-format`.",
+        "Want to change the `/player-stats` format? Use `/settings stats-format`.",
+        "Want to change the `/player-stats` format? Use `/settings stats-format`."
     ]
 }

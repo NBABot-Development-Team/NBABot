@@ -39,11 +39,22 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName(`compare-players`)
         .setDescription(`Visually compare the regular seasons stats from any players after 1979.`)
-        .addStringOption(option => option.setName(`player1_name`).setDescription(`The name of the first player, e.g. LeBron James.`).setRequired(true))
+        .addStringOption(option => option.setName(`player1_name`).setDescription(`The name of the first player, e.g. LeBron James.`).setRequired(true).setAutocomplete(true))
         .addStringOption(option => option.setName(`player1_season`).setDescription(`The season of the first player, e.g. 2017-18.`).setRequired(true))
-        .addStringOption(option => option.setName(`player2_name`).setDescription(`The name of the second player, e.g. Stephen Curry.`).setRequired(true))
+        .addStringOption(option => option.setName(`player2_name`).setDescription(`The name of the second player, e.g. Stephen Curry.`).setRequired(true).setAutocomplete(true))
         .addStringOption(option => option.setName(`player2_season`).setDescription(`The season of the second player, e.g. 2015-16.`).setRequired(true))
         .addBooleanOption(option => option.setName(`per36`).setDescription(`Whether you want to adjust each player's stats per 36 minutes played.`)),
+
+    async autocomplete(variables) {
+        let { interaction } = variables;
+
+        const focusedValue = interaction.options.getFocused();
+        const choices = Object.values(require(`../assets/players/bdl/names.json`));
+        const filtered = choices.filter(choice => choice.toLowerCase().startsWith(focusedValue.toLowerCase())).slice(0, 25);
+        await interaction.respond(
+            filtered.map(choice => ({ name: choice, value: choice }))
+        );
+    },
     
     async execute(variables) {
         let { interaction, ad } = variables;

@@ -24,11 +24,14 @@ module.exports = async (date, userSpecified, teamSpecified) => {
             let json;
             if (date == currentDate) {
                 // Can get cache
+                delete require.cache[require.resolve(`../cache/${date}/scoreboard.json`)];
                 json = require(`../cache/${date}/scoreboard.json`);
+                console.log(`Json is from here 1`)
             } else {
                 if (fs.existsSync(`./cache/${date}/scoreboard.json`)) {
                     delete require.cache[require.resolve(`../cache/${date}/scoreboard.json`)];
                     json = require(`../cache/${date}/scoreboard.json`);
+                    console.log(`Json is from here 2`)
                 } else {
                     json = await getJSON(`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json`);
                     let dates = json.leagueSchedule.gameDates;
@@ -37,6 +40,7 @@ module.exports = async (date, userSpecified, teamSpecified) => {
                         d = d.toISOString().substring(0, 10).split(`-`).join(``);
                         if (d == date) {
                             json = dates[i];
+                            console.log(`Json is from here 3`)
                         }
                     }
                 }
@@ -60,13 +64,14 @@ module.exports = async (date, userSpecified, teamSpecified) => {
 
                 betLoop: for (var j = 0; j < bet.length; j++) { // Cycling through each bet on that date
                     if (bet[j].includes(`+`)) { // Parlay
-                        let details = bet[j].split(`|`);
-                        let teams = details[0].split(`+`);
+                        let details = bet[j].split(`|`); // Key components of parlay: TEAMS|PLACED|PAYOUT
+                        let teams = details[0].split(`+`); // All teams in parlay for that date
                         let allCorrect = true, allDone = true, lostTeam;
 
                         gameLoop: for (var k = 0; k < json.games.length; k++) {
                             let c = json.games[k];
-                            if (teams.includes(c.awayTeam.teamTricode) || teams.includes(c.awayTeam.teamTricode)) {
+
+                            if (teams.includes(c.awayTeam.teamTricode) || teams.includes(c.homeTeam.teamTricode)) {
                                 // Game finished?
                                 if (c.gameStatus < 3) {
                                     // Game not done, so whole parlay cannot be claimed
@@ -77,7 +82,7 @@ module.exports = async (date, userSpecified, teamSpecified) => {
                                 // Game finished, did the chosen team lose?
                                 let location = (teams.includes(c.awayTeam.teamTricode)) ? `awayTeam` : `homeTeam`;
                                 let other = (location == `awayTeam`) ? `homeTeam` : `awayTeam`;
-                                if (c[location].score < c[other].score) {
+                                if (parseInt(c[location].score) < parseInt(c[other].score)) {
                                     // Chosen team lost so whole parlay invalid
                                     allCorrect = false;
                                     lostTeam = c[location].teamTricode;
@@ -92,11 +97,11 @@ module.exports = async (date, userSpecified, teamSpecified) => {
                         }
 
                         if (!allCorrect) {
-                            description += `:red_square: ${teamEmojis[lostTeam]} lost, so whole parlay of ${teams.join(`, `)} lost → $0.00 gained.\n`;
+                            description += `:red_square: ${teamEmojis[lostTeam]} lost, so whole parlay of ${teams.join(`, `)} lost → \`$0.00\` gained.\n`;
                             user.Wrong++;
                         } else {
                             // Parlay correct! Give them the money
-                            description += `:green_square: ${teams.join(`, `)} won, $${details[2]} gained.`;
+                            description += `:green_square: ${teams.join(`, `)} won → \`$${details[2]}\` gained.`;
                             user.Correct++;
                             user.Balance += parseFloat(details[2]);
                             user.Balance = parseFloat(user.Balance.toFixed(2));
@@ -120,10 +125,10 @@ module.exports = async (date, userSpecified, teamSpecified) => {
                             if (parseInt(json.games[k][location].score) > parseInt(json.games[k][(location == `awayTeam` ? `homeTeam` : `awayTeam`)].score)) { // Bet won
                                 user.Balance += parseFloat(details[2]);
                                 user.Correct++;
-                                description += `:green_square: ${teamEmojis[details[0]]} won, $${details[2]} gained.\n`;
+                                description += `:green_square: ${teamEmojis[details[0]]} won → \`$${details[2]}\` gained.\n`;
                             } else { // Bet lost
                                 user.Wrong++;
-                                description += `:red_square: ${teamEmojis[details[0]]} lost, $0.00 gained.\n`;
+                                description += `:red_square: ${teamEmojis[details[0]]} lost → \`$0.00\` gained.\n`;
                             }
 
                             betsClaimed++;

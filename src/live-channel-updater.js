@@ -17,6 +17,7 @@ const teams = require(`./assets/teams/details.json`);
 
 // Methods
 const getJSON = require(`./methods/get-json.js`);
+const getHTML = require(`./methods/get-html.js`);
 const query = require(`./methods/database/query.js`);
 const getValue = require(`./methods/database/get-value.js`);
 const formatDuration = require(`./methods/format-duration.js`);
@@ -42,7 +43,7 @@ client.on(`ready`, async () => {
     PlayerNews();
     Injuries();
 
-    setInterval(Scores, 1000 * 60 * 10);
+    setInterval(Scores, 1000 * 60);
     setInterval(Transactions, 1000 * 60 * 5);
     setInterval(News, 1000 * 60 * 60);
     setInterval(PlayerNews, 1000 * 60 * 5);
@@ -448,6 +449,7 @@ async function News() {
 
     let embed2 = new Discord.MessageEmbed()
         .setTitle(`__${seasonScheduleYear}-${seasonScheduleYear + 1} League Standings:__`)
+        .setTimestamp()
         .setColor(teamColors.NBA);
         
     let w = 10, l = 6, g = 4, s = 8;
@@ -620,7 +622,7 @@ async function PlayerNews() {
 
         if (aExists) { 
             // Seeing if the last mention was ages ago (>1 day ago) - then it must be new
-            if (new Date(a[0].Time).getTime() + 1000 * 60 * 60 * 24 * 10 > new Date().getTime()) {
+            if (new Date(a[0].Time).getTime() + 1000 * 60 * 60 * 24 * 7 * 3 > new Date().getTime()) {
                 continue mainLoop;
             }
         }

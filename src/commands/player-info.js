@@ -1,3 +1,5 @@
+// https://stats.nba.com/stats/commonplayerinfo?LeagueID=&PlayerID=2544
+
 // Libraries
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const Discord = require(`discord.js`);
@@ -27,7 +29,18 @@ module.exports = {
 	data: new SlashCommandBuilder()
 		.setName(`player-info`)
 		.setDescription(`Get basic info and description for a specific player.`)
-        .addStringOption(option => option.setName(`name`).setDescription(`The player's name, e.g. LeBron James.`).setRequired(true)),
+        .addStringOption(option => option.setName(`name`).setDescription(`The player's name, e.g. LeBron James.`).setRequired(true).setAutocomplete(true)),
+
+    async autocomplete(variables) {
+        let { interaction } = variables;
+
+        const focusedValue = interaction.options.getFocused();
+        const choices = Object.values(require(`../assets/players/all/names.json`));
+        const filtered = choices.filter(choice => choice.toLowerCase().includes(focusedValue.toLowerCase())).slice(0, 25);
+        await interaction.respond(
+            filtered.map(choice => ({ name: choice, value: choice }))
+        );
+    },
     
 	async execute(variables) {
 		let { interaction, ad } = variables;
@@ -144,7 +157,7 @@ module.exports = {
                         }
                     }
 
-                    let str1t = `__Teams__`, str2t = ``, str1a = `__Awards__`, str2a = ``;
+                    let str1t = `__Team Selections  __`, str2t = ``, str1a = `__Awards__`, str2a = ``;
 
                     typeLoop: for (var type in team) {
                         if (team[type].length == 0) continue typeLoop;

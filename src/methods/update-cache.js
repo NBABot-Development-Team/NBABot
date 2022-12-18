@@ -14,6 +14,7 @@ updateOdds - scrapes available odds from ESPN and writes them to cache
 */
 
 let summerLeague = false;
+const config = require(`../config.json`);
 
 // Methods
 const getJSON = require(`./get-json.js`);
@@ -33,7 +34,7 @@ const teamEmojis = require(`../assets/teams/emojis.json`);
 let counter = 0;
 
 module.exports = {
-	async updateDate() {
+	async updateDate(con) {
 		let json = await getJSON(`https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json`);
 
 		let gamesExist = true;
@@ -41,6 +42,11 @@ module.exports = {
 		if (!json.scoreboard) gamesExist = false;
 		if (!json.scoreboard.games) gamesExist = false;
 		if (json.scoreboard.games.length == 0) gamesExist = false;
+
+		delete require.cache[require.resolve(`../cache/today.json`)];
+		let prevDate = require(`../cache/today.json`).links.currentDate;
+
+		let changed = false;
 
 		let trueDate = moment().tz("America/New_York").format().substring(0, 10).split(`-`).join(``), currentDate;
 
@@ -54,17 +60,41 @@ module.exports = {
 
 			let nbaDate = json.games[0].gameCode.split(`/`)[0];
 			if (gamesFinished == json.games.length) { // Games all done, move ahead?
-				currentDate = trueDate;
-			} else currentDate = nbaDate;
-		} else currentDate = trueDate;
+				// Adding 10 minute buffer
+				let time = await query(con, `SELECT * FROM first_move WHERE Date = "${prevDate}";`);
+				
+				let there = true;
+				if (!time) there = false;
+				else if (time.length == 0) there = false;
 
-		let today = require(`../cache/today.json`);
+				if (there) {
+					// Already tried, seeing if this time is earlier than 10 minutes ago
+					time = time[0].Time;
+					if (time + 1000 * 60 * 10 < new Date().getTime()) {
+						currentDate = trueDate;
+						changed = true;
+					}
+				} else {
+					await query(con, `INSERT INTO first_move VALUES ("${prevDate}", ${new Date().getTime()})`);
+				}
+			} else {
+				currentDate = nbaDate;
+				changed = true;
+			}
+		} else {
+			changed = true;
+			currentDate = trueDate;
+		}
 
-		today.links.currentDate = currentDate;
+		if (changed) {
+			let today = require(`../cache/today.json`);
 
-		fs.writeFileSync(`./cache/today.json`, JSON.stringify(today), err => {
-			if (err) throw err;
-		});
+			today.links.currentDate = currentDate;
+
+			fs.writeFileSync(`./cache/today.json`, JSON.stringify(today), err => {
+				if (err) throw err;
+			});
+		}
 	},
 
 	async updateOdds() {
@@ -230,60 +260,6 @@ module.exports = {
 				json = json2;
 			}
 		}
-		/*
-		let json = await getJSON(`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json`);
-		let dates = json.leagueSchedule.gameDates;
-		for (var i = 0; i < dates.length; i++) {
-			let d = new Date(dates[i].gameDate);
-			d = d.toISOString().substring(0, 10).split(`-`).join(``);
-			if (d == currentDate) {
-				json = dates[i];
-				for (var j = 0; j < json.games.length; j++) {
-					if (json.games[j].gameStatus == 3 && (json.games[j].awayTeam.score == 0 || json.games[j].homeTeam.score == 0)) {
-						json = await getJSON(`https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json`);
-						json = json.scoreboard;
-					}
-				}
-			}
-		} 
-		*/
-
-		// let json2 = await getJSON(`http://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=${currentDate}`);
-
-		/* ESPN workaround
-		let solutions = { "UTAH": "UTA", "GS": "GSW", "NY": "NYK", "SA": "SAS", "NO": "NOP" };
-		for (var i = 0; i < json.games.length; i++) {
-			// Cycling through each game and seeing if ESPN has scores instead
-			if (!json.games[i].vTeam.score && !json.games[i].hTeam.score) {
-				eventLoop: for (var j = 0; j < json2.events.length; j++) {
-					let game = json2.events[j].competitions[0];
-					let vTeam, hTeam;
-					// Fixing irregularities
-					for (var k = 0; k < game.competitors.length; k++) {
-						if (solutions[game.competitors[k].team.abbreviation]) {
-							game.competitors[k].team.abbreviation = solutions[game.competitors[k].team.abbreviation];
-						}
-
-						if (game.competitors[k].homeAway == `home`) {
-							hTeam = game.competitors[k];
-						} else if (game.competitors[k].homeAway == `away`) {
-							vTeam = game.competitors[k];
-						}
-					}
-
-					if (!vTeam || !hTeam) continue eventLoop; 
-
-					if (vTeam.team.abbreviation == json.games[i].vTeam.triCode &&
-						hTeam.team.abbreviation == json.games[i].hTeam.triCode) {
-						json.games[i].vTeam.score = vTeam.score;
-						json.games[i].hTeam.score = hTeam.score;
-						json.games[i].period.current = game.status.period;
-						json.games[i].clock = game.status.displayClock;
-						if (game.status.type.name == `STATUS_FINAL`) json.games[i].statusNum = 3;
-					}
-				}
-			} 
-		} */
 
 		// Writing to cache
 		if (!fs.existsSync(`./cache/${currentDate}/`)) fs.mkdir(`./cache/${currentDate}/`, err => { if (err) throw err; });
@@ -343,5 +319,47 @@ module.exports = {
 		let all = await query(con, `SHOW COLUMNS FROM BETS;`);
 
 		console.log(all);
+	},
+
+	async updateAllPlayers() {
+		delete require.cache[require.resolve(`../cache/today.json`)];
+		let season = require(`../cache/today.json`).seasonScheduleYear;
+
+		let json = await fetch(`https://stats.nba.com/stats/commonallplayers?IsOnlyCurrentSeason=0&LeagueID=00&Season=${season}-${(parseInt(season) + 1).toString().substring(2, 4)}`, {
+			headers: config.headers
+		});
+
+		if (!json.ok) {
+			console.log(`json.ok FALSE`);
+			return;
+		}
+		json = await json.json();
+		if (!json) {
+			console.log(`json FALSE`);
+			return;
+		}
+
+		// Getting location of headers
+		let headers = {};
+		for (var i = 0; i < json.resultSets[0].headers.length; i++) {
+			headers[json.resultSets[0].headers[i]] = i;
+		}
+
+		// Assigning the player info
+		let players = json.resultSets[0].rowSet;
+		let ids = {}, names = {}, details = {};
+		for (var i = 0; i < players.length; i++) {
+			ids[players[i][headers[`DISPLAY_FIRST_LAST`]].toLowerCase()] = players[i][headers[`PERSON_ID`]];
+			names[players[i][headers[`PERSON_ID`]]] = players[i][headers[`DISPLAY_FIRST_LAST`]];
+			details[players[i][headers[`PERSON_ID`]]] = {
+				name: players[i][headers[`DISPLAY_FIRST_LAST`]],
+				from: players[i][headers[`FROM_YEAR`]],
+				to: players[i][headers[`TO_YEAR`]]
+			};
+		}
+
+		fs.writeFileSync(`./assets/players/all/names.json`, JSON.stringify(names), err => { if (err) throw err; });
+		fs.writeFileSync(`./assets/players/all/ids.json`, JSON.stringify(ids), err => { if (err) throw err; });
+		fs.writeFileSync(`./assets/players/all/details.json`, JSON.stringify(details), err => { if (err) throw err; });
 	}
 }

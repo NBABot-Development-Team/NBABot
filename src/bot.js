@@ -558,6 +558,19 @@ client.on(`messageCreate`, async message => {
 
 // On / command
 client.on(`interactionCreate`, async interaction => {
+	if (interaction.isAutocomplete()) {
+        const command = client.commands.get(interaction.commandName);
+        if (!command) return;
+
+        try {
+            await command.autocomplete({ interaction });
+        } catch (e) {
+            console.error(e);
+        }
+
+        return;
+    }
+
 	if (!interaction.isCommand()) return;
 
 	const command = client.commands.get(interaction.commandName);
@@ -800,8 +813,10 @@ const claimBets = require('./methods/claim-bets');
 const cleanUpDateColumns = require(`./methods/clean-up-date-columns.js`);
 
 // Cache and updating stuff
-methods.updateDate();
-setInterval(methods.updateDate, 1000 * 60 * 5);
+methods.updateDate(con);
+setInterval(async () => {
+	await methods.updateDate(con)
+}, 1000 * 60 * 5);
 
 methods.updateScores();
 setInterval(methods.updateScores, 1000 * 20);
@@ -811,6 +826,13 @@ setInterval(methods.updateFutureScores, 1000 * 60 * 60);
 
 methods.updateOddsNew();
 setInterval(methods.updateOddsNew, 1000 * 60 * 30);
+
+(async () => {
+	await methods.updateAllPlayers();
+})();
+setInterval(async () => {
+	await methods.updateAllPlayers();
+}, 1000 * 60 * 60);
 
 function updateActivity() {
 	delete require.cache[require.resolve(`./config.json`)];

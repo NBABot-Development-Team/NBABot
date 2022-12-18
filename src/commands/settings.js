@@ -92,6 +92,17 @@ module.exports = {
                 }).addChoices({
                     name: `Off`,
                     value: `off`
+                }).setRequired(true)))
+        .addSubcommand(subcommand => 
+            subcommand
+                .setName(`stats-format`)
+                .setDescription(`Change the format for player-stats between embed and image.`)
+                .addStringOption(option => option.setName(`format`).setDescription(`Whether you want it to be in image or embed format.`).addChoices({
+                    name: `Embed`,
+                    value: `embed`
+                }).addChoices({
+                    name: `Image`,
+                    value: `image`
                 }).setRequired(true))),
     
 	async execute(variables) {
@@ -243,6 +254,17 @@ module.exports = {
                 } else {
                     await query(con, `UPDATE users SET Hints = "n" WHERE ID = "${interaction.user.id}";`);
                     return await interaction.reply(`**Success!** Tips are now off.`);
+                }
+                break;
+
+            case `stats-format`:
+                let choice5 = interaction.options.getString(`format`);
+                if (choice5 == `embed`) {
+                    await query(con, `UPDATE users SET StatsChoice = "e" WHERE ID = "${interaction.user.id}";`);
+                    return await interaction.reply(`**Success!** \`/player-stats\` will now be in embed format.`);
+                } else {
+                    await query(con, `UPDATE users SET StatsChoice = "i" WHERE ID = "${interaction.user.id}";`);
+                    return await interaction.reply(`**Success!** \`/player-stats\` will now be in image format.`);
                 }
                 break;
 

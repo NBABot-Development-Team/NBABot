@@ -37,12 +37,14 @@ module.exports = {
             today = true;
         } else {
             date = await formatDate(date, con, interaction.user.id);
+            if (date == currentDate) today = true;
             if (!date) return await interaction.reply({ content: `Please use a valid date in mm/dd/yyyy format.` });
         }
 
         // Getting scores
         let json;
         if (today) {
+            delete require.cache[require.resolve(`../cache/${date}/scoreboard.json`)];
             json = require(`../cache/${date}/scoreboard.json`);
         } else {
             json = await getJSON(`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json`);
@@ -79,13 +81,15 @@ module.exports = {
             if (!bets) return await interaction.reply({ content: `No bets from you were found for that date.` });
 
             for (var i = 0; i < bets.length; i++) {
-                if (bets[i].includes(`+`) && team == `parlay`) {
-                    // Checking if any of the games have started
+                if (bets[i].includes(`+`) && team.toLowerCase() == `parlay`) {
+                    // Checking if any of the games have started -> then can't retract
                     let teams = bets[i].split(`|`)[0].split(`+`);
+                    let allNotStartedYet = true;
                     for (var j = 0; j < json.games.length; j++) {
-                        let c = json.games[i];
+                        let c = json.games[j];
+
                         if (teams.includes(c.awayTeam.teamTricode) || teams.includes(c.homeTeam.teamTricode)) {
-                            if (c.gameStatus > 1 && interaction.user.id != `401649168948396032`) {
+                            if (c.gameStatus > 1) {
                                 return await interaction.reply({ content: `The game \`${c.awayTeam.teamTricode} @ ${c.homeTeam.teamTricode}\` on \`${date.substring(4, 6)}/${date.substring(6, 8)}/${date.substring(0, 4)}\` has already started so the parlay cannot be retracted.` });
                             }
                         }
@@ -111,29 +115,29 @@ module.exports = {
                     await require(`../methods/update-peak-positions.js`)(con, interaction.user.id);
 
                     return await interaction.reply({ embeds: [embed] });
-                }
-
-                if (bets[i].split(`|`)[0] == team) {
-                    betFound = true;
-
-                    let user = await getUser(con, `users`, interaction.user.id);
-                    user = user[0];
-                    user.Balance += parseFloat(bets[i].split(`|`)[1]);
-                    await updateUser(con, `users`, interaction.user.id, user);
-                    
-                    bets.splice(i, 1);
-                    await query(con, `UPDATE bets SET d${date} = "${bets.join(`,`)}" WHERE ID = "${interaction.user.id}";`);
-
-                    let embed = new Discord.MessageEmbed()
-                        .setTitle(`Bet successfully retracted.`)
-                        .setColor(0x5CB85C)
-                        .setDescription(`Your balance is now $${user.Balance.toFixed(2)}.`);
-
-                    if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });
-
-                    await require(`../methods/update-peak-positions.js`)(con, interaction.user.id);
-
-                    return await interaction.reply({ embeds: [embed] });
+                } else { // Normal bet
+                    if (bets[i].split(`|`)[0] == team) {
+                        betFound = true;
+    
+                        let user = await getUser(con, `users`, interaction.user.id);
+                        user = user[0];
+                        user.Balance += parseFloat(bets[i].split(`|`)[1]);
+                        await updateUser(con, `users`, interaction.user.id, user);
+                        
+                        bets.splice(i, 1);
+                        await query(con, `UPDATE bets SET d${date} = "${bets.join(`,`)}" WHERE ID = "${interaction.user.id}";`);
+    
+                        let embed = new Discord.MessageEmbed()
+                            .setTitle(`Bet successfully retracted.`)
+                            .setColor(0x5CB85C)
+                            .setDescription(`Your balance is now $${user.Balance.toFixed(2)}.`);
+    
+                        if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });
+    
+                        await require(`../methods/update-peak-positions.js`)(con, interaction.user.id);
+    
+                        return await interaction.reply({ embeds: [embed] });
+                    }
                 }
             }
         }

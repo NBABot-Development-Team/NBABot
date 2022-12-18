@@ -212,6 +212,14 @@ module.exports = {
 				embed.addField(`**DNP**`, dnp.join(`, `));
 			}
 
+			// Getting shotchart
+			let shotchart = await require(`../methods/get-shotchart.js`)(`https://cdn.nba.com/static/json/liveData/playbyplay/playbyplay_${gameID}.json`, gameDetails[teamLocation].teamTricode);
+			if (shotchart) {
+				let fileName = `shotchart.png`;
+                shotchart = new Discord.MessageAttachment(shotchart, fileName);
+				embed.setImage(`attachment://${fileName}`);
+			}
+
 			const row = new Discord.MessageActionRow()
 				.addComponents(
 					new Discord.MessageButton()
@@ -233,9 +241,11 @@ module.exports = {
 
 			if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });
 
+			let package = (shotchart) ? { embeds: [embed], components: [row], files: [shotchart]} : { embeds: [embed], components: [row] };
+
 			if (update) {
-				await interaction.update({ embeds: [embed], components: [row] });
-			} else await interaction.reply({ embeds: [embed], components: [row ]});
+				await interaction.update(package);
+			} else await interaction.reply(package);
 		}
 
 		// Initial interaction reply

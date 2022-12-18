@@ -6,17 +6,28 @@ const fetch = require(`node-fetch`);
 
 // Assets
 const teamColors = require(`../assets/teams/colors.json`);
-const teamEmojis = require(`../assets/teams/emojis.json`);
 const teamNames = require(`../assets/teams/names.json`);
 const names = {
+    nba: require(`../assets/players/nba/names.json`),
+    bdl: require(`../assets/players/bdl/names.json`),
     all: require(`../assets/players/all/names.json`)
 };
 const ids = {
+    nba: require(`../assets/players/nba/ids.json`),
+    bdl: require(`../assets/players/bdl/ids.json`),
     all: require(`../assets/players/all/ids.json`)
+};
+const lastPlayed = {
+    nba: require(`../assets/players/nba/last-played.json`),
+    bdl: require(`../assets/players/bdl/last-played.json`),
 };
 
 // Methods
+const formatPlayer = require(`../methods/format-player2.js`);
+const getJSON = require('../methods/get-json.js');
 const formatSeason = require(`../methods/format-season.js`);
+const randInt = require(`../methods/randint.js`);
+const randint = require('../methods/randint.js');
 const query = require(`../methods/database/query.js`);
 
 async function getNewAPI(url) {
@@ -39,7 +50,7 @@ async function getNewAPI(url) {
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('player-stats')
-		.setDescription(`Get a player's stats from any season.`)
+		.setDescription(`Get a player's stats from any season after 1979-80.`)
         .addStringOption(option => option.setName(`name`).setDescription(`Player name`).setRequired(true).setAutocomplete(true))
         .addStringOption(option => option.setName(`season`).setDescription(`An NBA season, e.g. 2019-2020, 2019-20, or 2019.`))
         .addStringOption(option => option.setName(`mode`).setDescription(`Regular/career/playoffs`).addChoices({
@@ -59,8 +70,7 @@ module.exports = {
 
         const focusedValue = interaction.options.getFocused();
         const choices = Object.values(names.all);
-        const filtered = choices.filter(choice => choice.toLowerCase().includes(focusedValue.toLowerCase())).slice(0, 25);
-
+        const filtered = choices.filter(choice => choice.toLowerCase().startsWith(focusedValue.toLowerCase())).slice(0, 25);
         await interaction.respond(
             filtered.map(choice => ({ name: choice, value: choice }))
         );
@@ -75,7 +85,7 @@ module.exports = {
         let requestedName = interaction.options.getString(`name`),
             requestedSeason = interaction.options.getString(`season`),
             requestedMode = interaction.options.getString(`mode`),
-            useAdvanced = interaction.options.getBoolean(`advanced`), season;
+            useAdvanced = interaction.options.getBoolean(`advanced`);
 
         // Getting today.json
         delete require.cache[require.resolve(`../cache/today.json`)];
@@ -166,102 +176,91 @@ module.exports = {
         let url = `https://stats.nba.com/stats/playerprofilev2?LeagueID=&PerMode=PerGame&PlayerID=${details.id}`;
 
         async function getPlayerStats(update, season, currentInteraction) {
-            let p, color = teamColors.NBA, previous, next, first, last, team;
+            let p, color = teamColors.NBA, previous, next;
 
             let json = await getNewAPI(url);
 
             if (!json) {
-                if (update) return await currentInteraction.update(`An error occurred fetching those statistics. [Code: F7]`);
-                else return await currentInteraction.editReply(`An error occurred fetching those statistics. [Code: F7]`);
-            }
+                if (update) await currentInteraction.update(`An error occurred fetching those statistics. [Code: F7]`);
+                else await currentInteraction.editReply(`An error occurred fetching those statistics. [Code: F7]`);
+            } else {
+                // If no season specified, make it most recent for that mode
+                if (!season) {
+                    switch (mode) {
+                        case `regular`:
+                            season = json.resultSets[0].rowSet[json.resultSets[0].rowSet.length - 1][1].split(`-`)[0];
+                            break;
 
-            // If no season specified, make it most recent for that mode
-            if (!season) {
-                switch (mode) {
-                    case `regular`:
-                        season = json.resultSets[0].rowSet[json.resultSets[0].rowSet.length - 1][1].split(`-`)[0];
-                        break;
+                        case `career`:
+                            season = json.resultSets[1].rowSet[json.resultSets[1].rowSet.length - 1][1].split(`-`)[0];
+                            break;
 
-                    case `career`:
-                        season = json.resultSets[1].rowSet[json.resultSets[1].rowSet.length - 1][1].split(`-`)[0];
-                        break;
-
-                    case `playoffs`:
-                        season = json.resultSets[2].rowSet[json.resultSets[2].rowSet.length - 1][1].split(`-`)[0];
-                        break;
-                }
-            }
-
-            if (mode == `regular`) {
-                let seasons = json.resultSets[0].rowSet;
-                for (var i = 0; i < seasons.length; i++) {
-                    if (season.toString() == seasons[i][1].split(`-`)[0]) {
-                        p = seasons[i];
-                        if (seasons[i - 1]) previous = seasons[i - 1][1];
-                        if (seasons[i + 1]) next = seasons[i + 1][1];
-
-                        // Getting team color
-                        team = teamNames[p[3]];
-                        if (p[3]) color = teamColors[teamNames[p[3]]]; 
-                        break;
+                        case `playoffs`:
+                            season = json.resultSets[2].rowSet[json.resultSets[2].rowSet.length - 1][1].split(`-`)[0];
+                            break;
                     }
                 }
 
-                let firstSeason = seasons[0][1].split(`-`)[0], lastSeason = seasons[seasons.length - 1][1].split(`-`)[0];
-                if (season.toString() != firstSeason && previous.split(`-`)[0] != firstSeason) first = firstSeason;
-                if (season.toString() != lastSeason && next.split(`-`)[0] != lastSeason) last = lastSeason;         
-            } else if (mode == `career`) {
-                p = json.resultSets[1].rowSet[0];
+                if (mode == `regular`) {
+                    let seasons = json.resultSets[0].rowSet;
+                    for (var i = 0; i < seasons.length; i++) {
+                        if (season.toString() == seasons[i][1].split(`-`)[0]) {
+                            p = seasons[i];
+                            if (seasons[i - 1]) previous = seasons[i - 1][1];
+                            if (seasons[i + 1]) next = seasons[i + 1][1];
 
-                // Using latest team colour
-                team = teamNames[json.resultSets[0].rowSet[json.resultSets[0].rowSet.length - 1][3]];
-                color = teamColors[teamNames[json.resultSets[0].rowSet[json.resultSets[0].rowSet.length - 1][3]]];
-            } else if (mode == `playoffs`) {
-                let playoffStatsExist = true;
-                if (!json.resultSets[2]) playoffStatsExist = false;
-                else if (!json.resultSets[2].rowSet) playoffStatsExist = false;
-                else if (json.resultSets[2].rowSet.length == 0) playoffStatsExist = false;
-                if (!playoffStatsExist) return await interaction.editReply(`\`${details.name}\` has not played in the playoffs yet.`);
-
-                p = json.resultSets[2];
-                let foundSeason = false;
-                seasonLoop: for (var i = 0; i < p.rowSet.length; i++) {
-                    if (season.toString() == p.rowSet[i][1].split(`-`)[0] || (!requestedSeason && i == p.rowSet.length - 1)) {
-                        if (!requestedSeason) season = parseInt(p.rowSet[i][1].split(`-`)[0]);
-                        foundSeason = true;
-                        if (p.rowSet[i - 1]) previous = p.rowSet[i - 1][1];
-                        if (p.rowSet[i + 1]) next = p.rowSet[i + 1][1];
-                        p = p.rowSet[i];
-
-                        team = teamNames[p[3]];
-                        color = teamColors[teamNames[p[3]]];
-                        break seasonLoop;
+                            // Getting team color
+                            if (p[3]) color = teamColors[teamNames[p[3]]]; 
+                            break;
+                        }
                     }
+                } else if (mode == `career`) {
+                    p = json.resultSets[1].rowSet[0];
+
+                    // Using latest team colour
+                    color = teamColors[teamNames[json.resultSets[0].rowSet[json.resultSets[0].rowSet.length - 1][3]]];
+                } else if (mode == `playoffs`) {
+                    let playoffStatsExist = true;
+                    if (!json.resultSets[2]) playoffStatsExist = false;
+                    else if (!json.resultSets[2].rowSet) playoffStatsExist = false;
+                    else if (json.resultSets[2].rowSet.length == 0) playoffStatsExist = false;
+                    if (!playoffStatsExist) return await interaction.editReply(`\`${details.name}\` has not played in the playoffs yet.`);
+
+                    p = json.resultSets[2];
+                    let foundSeason = false;
+                    seasonLoop: for (var i = 0; i < p.rowSet.length; i++) {
+                        if (season.toString() == p.rowSet[i][1].split(`-`)[0] || (!requestedSeason && i == p.rowSet.length - 1)) {
+                            if (!requestedSeason) season = parseInt(p.rowSet[i][1].split(`-`)[0]);
+                            foundSeason = true;
+                            if (p.rowSet[i - 1]) previous = p.rowSet[i - 1][1];
+                            if (p.rowSet[i + 1]) next = p.rowSet[i + 1][1];
+                            p = p.rowSet[i];
+
+                            color = teamColors[teamNames[p[3]]];
+                            break seasonLoop;
+                        }
+                    }
+
+                    if (!foundSeason) return await interaction.editReply(`Could not find playoff stats for \`${details.name}\` in the \`${season}-${parseInt(season + 1)}\` season.`);
                 }
 
-                let firstSeason = p.rowSet[0][1].split(`-`)[0], lastSeason = p.rowSet[p.rowSet.length - 1][1].split(`-`)[0];
-                if (season.toString() != firstSeason && previous.split(`-`)[0] != firstSeason) first = firstSeason;
-                if (season.toString() != lastSeason && next.split(`-`)[0] != lastSeason) last = lastSeason;
-
-                if (!foundSeason) return await interaction.editReply(`Could not find playoff stats for \`${details.name}\` in the \`${season}-${parseInt(season + 1)}\` season.`);
+                // Remapping everything to fit
+                let temp = {};
+                let keys = [`g`, `gamesPlayed`, `gamesStarted`, `mpg`, `fgp`, `ftp`, `tpp`, `rpg`, `apg`, `spg`, `bpg`, `turnovers`, `pFouls`, `ppg`, `points`, `fgm`, `tpm`, `fga`, `tpa`, `fta`, `ftm`, `offReb`, `defReb`];
+                let values = [6,  6,              7,              8,     11,   17,     14,    20,    21,    22,    23,      24,          25,     26,     26,       9,    12,    10,    13,    16,    15,     18,       19];
+                let valuesCareer = [3, 3,           4,            5,     8,    14,     11,    17,   18,     19,    20,      21,          22,     23,     23,      6,     9,     7,     10,    13,    12,     15,       16];
+                for (var i = 0; i < keys.length; i++) {
+                    temp[keys[i]] = parseFloat((mode == `career`) ? p[valuesCareer[i]] : p[values[i]]);
+                    if ([`fgp`, `ftp`, `tpp`].includes(keys[i])) temp[keys[i]] = parseFloat(100 * temp[keys[i]]).toFixed(1);
+                }
+                p = temp;
             }
 
-            // Remapping everything to fit
-            let temp = {};
-            let keys = [`g`, `gamesPlayed`, `gamesStarted`, `mpg`, `fgp`, `ftp`, `tpp`, `rpg`, `apg`, `spg`, `bpg`, `turnovers`, `pFouls`, `ppg`, `points`, `fgm`, `tpm`, `fga`, `tpa`, `fta`, `ftm`, `offReb`, `defReb`];
-            let values = [6,  6,              7,              8,     11,   17,     14,    20,    21,    22,    23,      24,          25,     26,     26,       9,    12,    10,    13,    16,    15,     18,       19];
-            let valuesCareer = [3, 3,           4,            5,     8,    14,     11,    17,   18,     19,    20,      21,          22,     23,     23,      6,     9,     7,     10,    13,    12,     15,       16];
-            for (var i = 0; i < keys.length; i++) {
-                temp[keys[i]] = parseFloat((mode == `career`) ? p[valuesCareer[i]] : p[values[i]]);
-                if ([`fgp`, `ftp`, `tpp`].includes(keys[i])) temp[keys[i]] = parseFloat(100 * temp[keys[i]]).toFixed(1);
-            }
-            p = temp;
-        
             // Error catching
             if (!p) return await interaction.editReply(`${season}-${season + 1} ${mode} stats could not be found for ${details.name}. [2]`);
             if (!p.gamesPlayed) return await interaction.editReply(`${season}-${season + 1} ${mode} stats could not be found for ${details.name}. [3]`);
 
-            // Calculated extra stats
+            // Calculated stats
             p.g = p.gamesPlayed;
             let _2pp = (((p.fgm - p.tpm) / (p.fga - p.tpa)) * 100).toPrecision(3),
                 _efgp = (((p.fgm + (0.5 * p.tpm)) / p.fga) * 100).toPrecision(3),
@@ -284,10 +283,8 @@ module.exports = {
                 }
 
                 let stats = advanced.rowSet[0];
-                if (stats) {
-                    for (var key in locations) {
-                        advancedData[key] = stats[locations[key]];
-                    }
+                for (var key in locations) {
+                    advancedData[key] = stats[locations[key]];
                 }
             }
 
@@ -329,7 +326,7 @@ module.exports = {
                 x.fillRect(0, 90, width, 5);
 
                 x.font = `25px WhitneyBold`;
-                x.fillStyle = teamColors.NBA;
+                x.fillStyle = /*`#E56020`*/ /*color*/ teamColors.NBA;
                 x.fillText(`PPG`, 15, 130);
                 x.fillText(`RPG`, 105, 130);
                 x.fillText(`APG`, 200, 130);
@@ -422,34 +419,31 @@ module.exports = {
 
                 embed = new Discord.MessageEmbed()
                     .setTitle(`__${detailText}__`)
-                    .setDescription(`Team: \`${team}\` ${teamEmojis[team]}`)
                     .setFooter({ text: `Note: you can change the stat format between embed and image with /settings stats-format.` })
                     .setColor(color);
 
                 if (headshot) embed.setThumbnail(headshot);
 
-                let old = false;
-                if (_gmsc == NaN && !p.tpp && p.spg == NaN) old = true;
-
                 // Adding stats to embed
+                let d = (details.source == `nba`)
                 embed.addField(`PPG`, `\`${p.ppg}\``, true);
                 embed.addField(`RPG`, `\`${p.rpg}\``, true);
                 embed.addField(`APG`, `\`${p.apg}\``, true);
-                if (!old) embed.addField(`SPG`, `\`${p.spg}\``, true);
-                if (!old) embed.addField(`BPG`, `\`${p.bpg}\``, true);
+                embed.addField(`SPG`, `\`${p.spg}\``, true);
+                embed.addField(`BPG`, `\`${p.bpg}\``, true);
                 embed.addField(`PF`,  `\`${(p.pFouls).toFixed(1)}\``, true);
-                if (!old) embed.addField(`TOPG`,`\`${(p.turnovers).toFixed(1)}\``, true);
-                if (!old) embed.addField(`MPG`, `\`${p.mpg}\``, true);
-                if (!old) embed.addField(`TOV%`, `\`${_tovp}\``, true);
+                embed.addField(`TOPG`,`\`${(p.turnovers).toFixed(1)}\``, true);
+                embed.addField(`MPG`, `\`${p.mpg}\``, true);
+                embed.addField(`TOV%`, `\`${_tovp}\``, true);
                 embed.addField(`FG%`, `\`${p.fgp}\``, true);
-                if (!old) embed.addField(`3P%`, `\`${p.tpp}\``, true);
+                embed.addField(`3P%`, `\`${p.tpp}\``, true);
                 embed.addField(`FT%`, `\`${p.ftp}\``, true);
-                if (!old) embed.addField(`2P%`, `\`${_2pp}\``, true);
-                if (!old) embed.addField(`EFG%`, `\`${_efgp}\``, true);
+                embed.addField(`2P%`, `\`${_2pp}\``, true);
+                embed.addField(`EFG%`, `\`${_efgp}\``, true);
                 embed.addField(`TS%`, `\`${_tsp}\``, true);
                 embed.addField(`GP`, `\`${p.g}\``, true);
-                if (!old) embed.addField(`GS`, `\`${p.gamesStarted}\``, true);
-                if (!old) embed.addField(`GmSc`, `\`${_gmsc.toFixed(1)}\``, true);
+                embed.addField(`GS`, `\`${p.gamesStarted}\``, true);
+                embed.addField(`GmSc`, `\`${_gmsc.toFixed(1)}\``, true);
 
                 if (Object.keys(advancedData).length > 0) {
                     embed.addField(`NET Rating`, `\`${advancedData[`NET_RATING`]}\``, true);
@@ -464,15 +458,6 @@ module.exports = {
             let row = null;
             if (mode != `career` && (previous || next) && !useAdvanced) { // Add buttons
                 row = new Discord.MessageActionRow();
-
-                if (first) {
-                    row.addComponents(
-                        new Discord.MessageButton()
-                            .setCustomId(`ps-${first}-${details.id}-${mode}`)
-                            .setLabel(`←← ${first}-${(parseInt(first) + 1).toString().substring(2, 4)}`)
-                            .setStyle(`PRIMARY`)
-                    ); 
-                }
                 if (previous) {
                     row.addComponents(
                         new Discord.MessageButton()
@@ -496,14 +481,6 @@ module.exports = {
                             .setStyle(`PRIMARY`)
                     );
                 }
-                if (last) {
-                    row.addComponents(
-                        new Discord.MessageButton()
-                            .setCustomId(`ps-${last}-${details.id}-${mode}`)
-                            .setLabel(`${last}-${(parseInt(last) + 1).toString().substring(2, 4)} →→`)
-                            .setStyle(`PRIMARY`)
-                    ); 
-                }
             }
 
             if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });
@@ -515,17 +492,5 @@ module.exports = {
                 await currentInteraction.editReply(package);
             }
         }
-
-        // Initial call
-        getPlayerStats(false, season, interaction);
-
-        // Collecting responses
-        const filter = i => i.customId.split(`-`)[0] == `ps` && i.user.id == interaction.user.id && i.customId.split(`-`)[2] == details.id && i.customId.split(`-`)[3] == mode;
-        const collector = interaction.channel.createMessageComponentCollector({ filter });
-        collector.on(`collect`, async i => {
-            collector.resetTimer();
-            await require(`../methods/add-to-button-count.js`)(con);
-            getPlayerStats(true, i.customId.split(`-`)[1], i);
-        });
     },
 };

@@ -17,7 +17,18 @@ module.exports = {
 	data: new SlashCommandBuilder()
 		.setName(`game-log`)
 		.setDescription(`Get basic statistics for the most recent performances of a specific current NBA player.`)
-        .addStringOption(option => option.setName(`name`).setDescription(`The name of a current NBA player, e.g. LeBron James.`).setRequired(true)),
+        .addStringOption(option => option.setName(`name`).setDescription(`The name of a current NBA player, e.g. LeBron James.`).setRequired(true).setAutocomplete(true)),
+
+    async autocomplete(variables) {
+        let { interaction } = variables;
+
+        const focusedValue = interaction.options.getFocused();
+        const choices = Object.values(require(`../assets/players/all/names.json`));
+        const filtered = choices.filter(choice => choice.toLowerCase().includes(focusedValue.toLowerCase())).slice(0, 25);
+        await interaction.respond(
+            filtered.map(choice => ({ name: choice, value: choice }))
+        );
+    },
     
 	async execute(variables) {
 		let { interaction, ad } = variables;

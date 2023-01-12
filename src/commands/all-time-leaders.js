@@ -93,7 +93,12 @@ module.exports = {
                     let description = ``;
                     for (var j = 0; j < leaders.length; j++) {
                         if ([`FG_PCT`, `FT_PCT`, `FG3_PCT`].includes(stat)) leaders[j][2] = (parseFloat(leaders[j][2]) * 100).toFixed(1);
-                        description += `${j + 1}) \`${leaders[j][2]}\` -  **${leaders[j][1]}${(leaders[j][4] == `Y` ? `*` : ``)}**\n`;
+                        description += `${j + 1}) \`${leaders[j][2]}\` -  **${leaders[j][1]}${(leaders[j][4] == `Y` ? `*` : ``)}**`;
+                        if (j > 0 && leaders[j][4] == `Y`) {
+                            let difference = leaders[j - 1][2] - leaders[j][2];
+                            if (difference > 0) description += `, trailing by \`${difference}\``;
+                        }
+                        description += `\n`;
                     }
                     description += `* - Active`;
                     embed.setDescription(description);

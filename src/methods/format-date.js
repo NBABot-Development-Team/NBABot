@@ -22,13 +22,13 @@ module.exports = async (date, con = null, id = null) => {
 		}
 
 		// Checking if the date is valid, and returning it in API yyyymmdd format
-		if (!date.split(``).includes(`/`)) resolve();	                
-		if (date.split(`/`).length != 3) resolve();
+		if (!date.split(``).includes(`/`)) return resolve();	                
+		if (date.split(`/`).length != 3) return resolve();
 		if (!date.split(`/`)[0] || !date.split(`/`)[1] || !date.split(`/`)[2]) resolve();
 
 		// Adding 0s e.g. 1/1/2000 -> 01/01/2000
 		if (date.split(`/`)[0].length == 1) date = `0${date.split('/')[0]}/${date.split('/')[1]}/${date.split('/')[2]}`;
-		if (!date.split(`/`)[0] || !date.split(`/`)[1] || !date.split(`/`)[2]) resolve();
+		if (!date.split(`/`)[0] || !date.split(`/`)[1] || !date.split(`/`)[2]) return resolve();
 		if (date.split(`/`)[1].length == 1) date = `${date.split('/')[0]}/0${date.split('/')[1]}/${date.split('/')[2]}`;
 
 		// Accounting for 22 -> 2022

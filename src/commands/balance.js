@@ -30,7 +30,7 @@ module.exports = {
             .setThumbnail(interaction.user.avatarURL())
             .setFooter({ text: `Note: the virtual currency used in NBABot's simulated betting system is NOT REAL and has no value.` })
             .setDescription(`Get an extra $10 in the simulated betting system by using \`/vote\`.`)
-            .addField(`Description`, `${user.Description}`, false)
+            // .addField(`Description`, `${user.Description}`, false)
             .addField(`Balance`, `\`$${user.Balance.toFixed(2)}\` (Peak: \`$${parseFloat(user.PeakPosition.split(`-`)[1]).toFixed(2)}\`)`, true)
             .addField(`Favourite Team`, `${user.FavouriteTeam} ${teamEmojis[user.FavouriteTeam]}`, true)
             .addField(`Donator`, (user.Donator == `y`) ? `Yes (NBA Chamption Donator)` : ((user.Donator == `f`) ? `Yes (Finals MVP Donator)` : `No`), true)

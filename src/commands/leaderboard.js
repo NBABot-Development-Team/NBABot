@@ -24,6 +24,12 @@ module.exports = {
 
 		let global = interaction.options.getBoolean(`global`);
 
+		let medals = {
+			1: `:first_place:`,
+			2: `:second_place:`,
+			3: `:third_place:`
+		};
+
 		let users;
 		if (global) {
 			users = await query(con, `SELECT * FROM users ORDER BY Balance DESC;`);
@@ -43,7 +49,7 @@ module.exports = {
 			
 			i++;
 			if (i <= 10) {
-				embed.addField(`${(user.ID == interaction.user.id) ? `__` : ``}${i}) @${username.username}#${username.discriminator} - \`$${user.Balance.toFixed(2).toString()}\`${(user.ID == interaction.user.id) ? `__` : ``}`, `_Betting record:_ \`${user.Correct} - ${user.Wrong}\` (${convertToPercentage(user.Correct, user.Correct + user.Wrong)})`);
+				embed.addField(`${(user.ID == interaction.user.id) ? `__` : ``}${(i <= 3 ? medals[i] : i)}) \`$${user.Balance.toFixed(2).toString()}\` - ${username.username}#${username.discriminator}${(user.ID == interaction.user.id) ? `__` : ``}`, `_Betting record:_ \`${user.Correct} - ${user.Wrong}\` (${convertToPercentage(user.Correct, user.Correct + user.Wrong)})`);
 			} else break;
 		}
 
@@ -55,7 +61,7 @@ module.exports = {
 
 		if (position) {
 			if (position.serial_num > 10) {
-				embed.addField(`...\n__${position.serial_num}) @${interaction.user.username} - \`$${position.Balance.toFixed(2).toString()}\`__`, `_Betting record:_ \`${position.Correct} - ${position.Wrong}\` (${convertToPercentage(position.Correct, position.Correct + position.Wrong)})`);
+				embed.addField(`...\n__${position.serial_num}) \`$${position.Balance.toFixed(2).toString()}\` - ${interaction.user.username}__`, `_Betting record:_ \`${position.Correct} - ${position.Wrong}\` (${convertToPercentage(position.Correct, position.Correct + position.Wrong)})`);
 			}
 		} else {
 			embed.setFooter({ text: `Note: Your position in the leaderboard could not be found for some reason.` });

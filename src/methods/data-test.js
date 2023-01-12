@@ -3,8 +3,14 @@ const config = require(`../config.json`);
 const fs = require(`fs`);
 
 // https://stats.nba.com/stats/playerprofilev2?LeagueID=&PerMode=PerGame&PlayerID=1631095
+
+
 // https://stats.nba.com/stats/playerdashboardbygeneralsplits?DateFrom=&DateTo=&GameSegment=&LastNGames=0&LeagueID=00&Location=&MeasureType=Advanced&Month=0&OpponentTeamID=0&Outcome=&PORound=0&PaceAdjust=N&PerMode=PerGame&Period=0&PlayerID=${id}&PlusMinus=N&Rank=N&Season=${season}&SeasonSegment=&SeasonType=Regular%20Season&ShotClockRange=&Split=general&VsConference=&VsDivision=
-fetch(`https://stats.nba.com/stats/franchisehistory?LeagueID=00`, {
+
+let url = 
+`https://stats.nba.com/stats/leaguestandingsv3?LeagueID=00&Season=2019-20&SeasonType=Regular+Season&SeasonYear=`;
+
+fetch(url, {
     headers: config.headers
 }).then(async res => {
     let a = await res.text();

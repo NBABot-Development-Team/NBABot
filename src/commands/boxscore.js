@@ -115,7 +115,10 @@ module.exports = {
 				let yDate = new Date(dateObject.getTime() - (86400000 * (i + 1))).toISOString().substring(0, 10).split(`-`).join(``);
 				if (fs.existsSync(`./cache/${yDate}/scoreboard.json`)) {
 					searchForGames(require(`../cache/${yDate}/scoreboard.json`));
-					if (foundGame) break dateLoop;
+					if (foundGame) {
+						requestedDate = yDate;
+						break dateLoop;
+					}
 				}
 			}
 
@@ -213,7 +216,8 @@ module.exports = {
 			}
 
 			// Getting shotchart
-			let shotchart = await require(`../methods/get-shotchart.js`)(`https://cdn.nba.com/static/json/liveData/playbyplay/playbyplay_${gameID}.json`, gameDetails[teamLocation].teamTricode);
+			let teamString = `${gameDetails[teamLocation].teamTricode} Shot Chart ${teamLocation == `homeTeam` ? `vs` : `@`} ${gameDetails[otherTeamLocation].teamTricode} on ${new Date(`${requestedDate.substring(0, 4)}-${requestedDate.substring(4, 6)}-${requestedDate.substring(6, 8)}`).toDateString()}`;
+			let shotchart = await require(`../methods/get-shotchart.js`)(`https://cdn.nba.com/static/json/liveData/playbyplay/playbyplay_${gameID}.json`, gameDetails[teamLocation].teamTricode, teamString);
 			if (shotchart) {
 				let fileName = `shotchart.png`;
                 shotchart = new Discord.MessageAttachment(shotchart, fileName);

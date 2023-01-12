@@ -354,7 +354,8 @@ module.exports = {
 			details[players[i][headers[`PERSON_ID`]]] = {
 				name: players[i][headers[`DISPLAY_FIRST_LAST`]],
 				from: players[i][headers[`FROM_YEAR`]],
-				to: players[i][headers[`TO_YEAR`]]
+				to: players[i][headers[`TO_YEAR`]],
+				team: players[i][headers[`TEAM_ABBREVIATION`]]
 			};
 		}
 

@@ -14,7 +14,7 @@ module.exports = (season) => {
             delete require.cache[require.resolve(`../cache/today.json`)];
             let seasonScheduleYear = require(`../cache/today.json`).seasonScheduleYear;
 
-            if (season <= seasonScheduleYear) return season;
+            if (season <= seasonScheduleYear && season >= 1946) return season;
             break;
     }
 };

@@ -1,6 +1,7 @@
 // Libraries
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const Discord = require(`discord.js`);
+const moment = require(`moment-timezone`);
 
 // Assets
 const teamIDs = require(`../assets/teams/ids.json`);
@@ -13,6 +14,7 @@ const teamEmojis = require(`../assets/teams/emojis.json`);
 const formatTeam = require(`../methods/format-team.js`);
 const getJSON = require(`../methods/get-json.js`);
 const formatNumber = require(`../methods/format-number.js`);
+const query = require(`../methods/database/query.js`);
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -63,7 +65,7 @@ module.exports = {
         // Sorting out which month the next game is in
         let nextGame = json.league.standard[nextGamePosition];
         if (!nextGame) return await interaction.reply(`\`${team}\` has no more games to play for this season.`);
-        let months = [`January`, `February`, `March`, `April`, `May`, `June`, `July`, `August`, `September`, `October`, `November`, `December`];
+        const months = [`January`, `February`, `March`, `April`, `May`, `June`, `July`, `August`, `September`, `October`, `November`, `December`];
         let nextGameDate = new Date(nextGame.gameDateTimeUTC);
         let currentMonth = nextGameDate.getMonth();
         let currentYear = nextGameDate.getFullYear();
@@ -81,15 +83,31 @@ module.exports = {
 
                     switch (game.gameStatus) {
                         case 1:
-                            description += (game.gameDateTimeUTC) ? `${new Date(game.gameDateTimeEst).toTimeString().substring(0, 5)} ET` : `TBD`;
+                            let timezone = await query(con, `SELECT * FROM users WHERE ID = "${interaction.user.id}"`);
+                            let timeStr = (game.gameDateTimeUTC) ? `${new Date(game.gameDateTimeEst).toTimeString().substring(0, 5)} ET` : `TBD`;
+
+                            if (timezone[0].Timezone && timeStr != `TBD`) {
+                                timezone = timezone[0].Timezone;
+                                if (moment.tz.names().includes(timezone)) {
+                                    let t = moment.tz(timeStr, `HH:mm z`, `America/New_York`);
+                                    timeStr = moment.tz(t.utc(), timezone).format(`h:mm a z`);
+                                }
+                            }
+
+                            description += timeStr;
                             break;
 
                         case 2:
-                            description += `${team} ${(team == game.homeTeam.teamTricode) ? `${game.homeTeam.score} - ${game.awayTeam.score}` : `${game.awayTeam.score} - ${game.homeTeam.score}`} LIVE`;
+                            description += `${team} ${(team == game.homeTeam.teamTricode) ? `\`${game.homeTeam.score}\` - \`${game.awayTeam.score}\`` : `\`${game.awayTeam.score}\` - \`${game.homeTeam.score}\``} LIVE`;
                             break;
 
                         case 3:
-                            description += `${team} ${(team == game.homeTeam.teamTricode) ? `${game.homeTeam.score} - ${game.awayTeam.score}` : `${game.awayTeam.score} - ${game.homeTeam.score}`} FINAL`;
+                            if ((parseInt(game.homeTeam.score) > parseInt(game.awayTeam.score) && team == game.homeTeam.teamTricode) || 
+                                (parseInt(game.homeTeam.score) < parseInt(game.awayTeam.score) && team == game.awayTeam.teamTricode)) {
+                                description += `:green_square: `;
+                            } else description += `:red_square: `;
+
+                            description += `${team} ${(team == game.homeTeam.teamTricode) ? `\`${game.homeTeam.score}\` - \`${game.awayTeam.score}\`` : `\`${game.awayTeam.score}\` - \`${game.homeTeam.score}\``} FINAL`;
                             break;
                     }
                     description += `\n`;
@@ -122,7 +140,7 @@ module.exports = {
 				);
 
             let embed = new Discord.MessageEmbed()
-                .setTitle(`${months[selectedMonth]} ${currentYear} Schedule for ${team}:`)
+                .setTitle(`__${months[selectedMonth]} ${currentYear} Schedule for ${team}:__`)
                 .setColor(teamColors[team])
                 .setDescription(description);
 

@@ -47,6 +47,7 @@ module.exports = async (date, userSpecified, teamSpecified) => {
             }
 
             let bets = await query(con, `SELECT * FROM bets WHERE d${date} IS NOT NULL${(userSpecified) ? ` AND ID = "${userSpecified}"` : ``};`);
+            console.log(`bets length: ${bets.length}`);
     
             userLoop: for (var i = 0; i < bets.length; i++) { // Cycling through each user with bets on that date
                 let bet = bets[i];

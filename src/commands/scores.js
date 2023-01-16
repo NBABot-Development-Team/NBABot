@@ -4,6 +4,7 @@ const Discord = require(`discord.js`);
 const fetch = require(`node-fetch`);
 const fs = require(`fs`);
 const path = require(`path`);
+const moment = require(`moment-timezone`);
 
 // Methods
 const formatDate = require(`../methods/format-date.js`);
@@ -194,7 +195,21 @@ module.exports = {
 					if (c.homeTeam.score == 0) c.homeTeam.score = ``;
 				}
 
-				str1 += `${(c.gameStatus == 1) ? `(${c.awayTeam.wins}-${c.awayTeam.losses})` : ``} ${teamEmojis[c.awayTeam.teamTricode]} ${(c.gameStatus == 3 && parseInt(c.awayTeam.score) > parseInt(c.homeTeam.score)) ? `__` : ``}${c.awayTeam.teamTricode} ${c.awayTeam.score}${(c.gameStatus == 3 && parseInt(c.awayTeam.score) > parseInt(c.homeTeam.score)) ? `__` : ``} @ ${(c.gameStatus == 3 && parseInt(c.homeTeam.score) > parseInt(c.awayTeam.score)) ? `__` : ``}${c.homeTeam.score} ${c.homeTeam.teamTricode}${(c.gameStatus == 3 && parseInt(c.homeTeam.score) > parseInt(c.awayTeam.score)) ? `__` : ``} ${teamEmojis[c.homeTeam.teamTricode]} ${(c.gameStatus == 1) ? `(${c.homeTeam.wins}-${c.homeTeam.losses}) ` : ``}| ${c.gameStatusText}`;
+				// Getting timezone if user has one
+				let timeStr = c.gameStatusText;
+				if (c.gameStatus == 1) {
+					let timezone = await query(con, `SELECT * FROM users WHERE ID = "${interaction.user.id}"`);
+
+					if (timezone[0].Timezone) {
+						timezone = timezone[0].Timezone;
+						if (moment.tz.names().includes(timezone)) {
+							let t = moment.tz(c.gameStatusText, `h:mm a`, `America/New_York`);
+							timeStr = moment.tz(t.utc(), timezone).format(`h:mm a z`);
+						}
+					}
+				}
+				
+				str1 += `${(c.gameStatus == 1) ? `(${c.awayTeam.wins}-${c.awayTeam.losses})` : ``} ${teamEmojis[c.awayTeam.teamTricode]} ${(c.gameStatus == 3 && parseInt(c.awayTeam.score) > parseInt(c.homeTeam.score)) ? `__` : ``}${c.awayTeam.teamTricode} ${c.awayTeam.score}${(c.gameStatus == 3 && parseInt(c.awayTeam.score) > parseInt(c.homeTeam.score)) ? `__` : ``} @ ${(c.gameStatus == 3 && parseInt(c.homeTeam.score) > parseInt(c.awayTeam.score)) ? `__` : ``}${c.homeTeam.score} ${c.homeTeam.teamTricode}${(c.gameStatus == 3 && parseInt(c.homeTeam.score) > parseInt(c.awayTeam.score)) ? `__` : ``} ${teamEmojis[c.homeTeam.teamTricode]} ${(c.gameStatus == 1) ? `(${c.homeTeam.wins}-${c.homeTeam.losses}) ` : ``}| \`${timeStr}\``;
 				let str2 = ``;
 				if (c.playoffs) str2 += `*${c.playoffs.seriesSummaryText}*\n`;
 9

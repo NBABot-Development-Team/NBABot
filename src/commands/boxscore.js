@@ -177,7 +177,7 @@ module.exports = {
 			b = await getJSON(`https://cdn.nba.com/static/json/liveData/boxscore/boxscore_${gameID}.json`);
 		
 			let embed = new Discord.MessageEmbed()
-				.setTitle(`Boxscore for ${teamEmojis[gameDetails[teamLocation].teamTricode]} ${gameDetails[teamLocation].teamTricode} ${(teamLocation == `homeTeam`) ? `v` : `@`} ${gameDetails[otherTeamLocation].teamTricode} ${teamEmojis[gameDetails[otherTeamLocation].teamTricode]}`)
+				.setTitle(`__Boxscore for ${teamEmojis[gameDetails[teamLocation].teamTricode]} ${gameDetails[teamLocation].teamTricode} ${(teamLocation == `homeTeam`) ? `v` : `@`} ${gameDetails[otherTeamLocation].teamTricode} ${teamEmojis[gameDetails[otherTeamLocation].teamTricode]}:__`)
 				.setDescription(`**Start time**: ${dateObject.toDateString()}\n**Location**: ${b.game.arena.arenaCity}, ${b.game.arena.arenaName}\n**Attendance**: ${(!b.game.attendance) ? `Unknown` : ((parseInt(b.game.attendance) == 0) ? `Unknown` : b.game.attendance)}\n**Game ID:** ${gameID}`)
 				.setColor(teamColors[gameDetails[teamLocation].teamTricode]);
 

@@ -4,6 +4,7 @@ const Discord = require(`discord.js`);
 const fs = require(`fs`);
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v9');
+const moment = require(`moment-timezone`);
 
 // Assets
 const teamColors = require(`../assets/teams/colors.json`);
@@ -12,6 +13,7 @@ const config = require(`../config.json`);
 // Methods
 const query = require(`../methods/database/query.js`);
 const formatTeam = require(`../methods/format-team.js`);
+const { autocomplete } = require('./shotchart');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -103,8 +105,32 @@ module.exports = {
                 }).addChoices({
                     name: `Image`,
                     value: `image`
-                }).setRequired(true))),
+                }).setRequired(true)))
+        .addSubcommand(subcommand => 
+            subcommand
+                .setName(`timezone`)
+                .setDescription(`Change your timezone for all times and dates in NBABot's commands.`)
+                .addStringOption(option => option.setName(`location`).setDescription(`Start typing your city/country/region and select the appropriate timezone.`).setAutocomplete(true).setRequired(true))),
     
+    // Only for timezones anyways
+    async autocomplete(variables) {
+        let { interaction } = variables;
+
+        // Building choices
+        let all = moment.tz.names();
+        let choices = [];
+        for (var i = 0; i < all.length; i++) {
+            choices.push(`${all[i].replace(/_/g, ` `)} - ${moment.tz(new Date().toISOString(), all[i]).format(`h:mma`)} now`);
+        }
+
+        const focusedValue = interaction.options.getFocused();
+        const filtered = choices.filter(choice => choice.toLowerCase().includes(focusedValue.toLowerCase())).slice(0, 25);
+
+        await interaction.respond(
+            filtered.map(choice => ({ name: choice, value: choice.split(` - `)[0].replace(/ /g, `_`) }))
+        );
+    },
+
 	async execute(variables) {
 		let { con, interaction } = variables;
 
@@ -266,6 +292,17 @@ module.exports = {
                     await query(con, `UPDATE users SET StatsChoice = "i" WHERE ID = "${interaction.user.id}";`);
                     return await interaction.reply(`**Success!** \`/player-stats\` will now be in image format.`);
                 }
+                break;
+
+            case `timezone`:
+                let location = interaction.options.getString(`location`); // e.g Pacific/Auckland
+
+                // Checking if their timezone actually exists in the total list
+                if (!moment.tz.names().includes(location)) return await interaction.reply(`\`${location}\` is not a valid timezone in the list. Please select from the list by typing your city/country/region.`);
+
+                await query(con, `UPDATE users SET Timezone = "${location}" WHERE ID = "${interaction.user.id}";`);
+
+                await interaction.reply(`**Success!** Your timezone has been changed to \`${location}\`. Your current time should be \`${moment.tz(new Date().toISOString(), location).format(`h:mma`)}\`.`);
                 break;
 
             default:

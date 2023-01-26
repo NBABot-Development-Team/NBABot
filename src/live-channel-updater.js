@@ -14,6 +14,7 @@ const config = require(`./config.json`);
 const teamColors = require(`./assets/teams/colors.json`);
 const teamEmojis = require(`./assets/teams/emojis.json`);
 const teams = require(`./assets/teams/details.json`);
+const rotowireTeamSolutions = { PHO: `PHX` };
 
 // Methods
 const getJSON = require(`./methods/get-json.js`);
@@ -448,7 +449,7 @@ async function News() {
     json = json.page.content.standings.groups.groups;
 
     let embed2 = new Discord.MessageEmbed()
-        .setTitle(`__${seasonScheduleYear}-${seasonScheduleYear + 1} League Standings:__`)
+        .setTitle(`${seasonScheduleYear}-${seasonScheduleYear + 1} League Standings:`)
         .setTimestamp()
         .setColor(teamColors.NBA);
         
@@ -580,7 +581,7 @@ async function PlayerNews() {
     a = await a.text();
     let $ = cheerio.load(a);
 
-    let names = [], headlines = [], descriptions = [];
+    let names = [], headlines = [], descriptions = [], teams = [];
 
     $(`a.news-update__player-link`).each((i, e) => {
         names.push($(e).text());
@@ -591,7 +592,15 @@ async function PlayerNews() {
     });
 
     $(`div.news-update__news`).each((i, e) => {
-        descriptions.push($(e).text());
+        let d = $(e).text();
+        if (d.length > 500) d = `${d.substring(0, 500)}...`;
+        descriptions.push(d);
+    });
+
+    $(`img.news-update__logo`).each((i, e) => {
+        let team = $(e).attr(`alt`);
+        if (rotowireTeamSolutions[team]) team = rotowireTeamSolutions[team];
+        teams.push(team);
     });
 
     let embed = new Discord.MessageEmbed()
@@ -627,7 +636,10 @@ async function PlayerNews() {
             }
         }
 
-        embed.addField(`__${names[i]} ${headlines[i]}__`, descriptions[i]);
+        let teamEmoji;
+        if (teamEmojis[teams[i]]) teamEmoji = teamEmojis[teams[i]];
+
+        embed.addField(`${teamEmoji} ${names[i]} ${headlines[i]}`, descriptions[i]);
         fieldsAdded++;
 
         if (aExists) {
@@ -663,7 +675,7 @@ async function Injuries() {
         a = await a.text();
         let $ = cheerio.load(a);
 
-        let names = [], headlines = [], descriptions = [];
+        let names = [], headlines = [], descriptions = [], teams = [];
 
         $(`a.news-update__player-link`).each((i, e) => {
             names.push($(e).text());
@@ -674,7 +686,15 @@ async function Injuries() {
         });
 
         $(`div.news-update__news`).each((i, e) => {
-            descriptions.push($(e).text());
+            let d = $(e).text();
+            if (d.length > 500) d = `${d.substring(0, 500)}...`;
+            descriptions.push(d);
+        });
+
+        $(`img.news-update__logo`).each((i, e) => {
+            let thisTeam = $(e).attr(`alt`);
+            if (rotowireTeamSolutions[thisTeam]) thisTeam = rotowireTeamSolutions[thisTeam];
+            teams.push(thisTeam);
         });
 
         let embed = new Discord.MessageEmbed()
@@ -704,12 +724,12 @@ async function Injuries() {
 
             if (aExists) { 
                 // Seeing if the last mention was ages ago (>1 day ago) - then it must be new
-                if (new Date(a[0].Time).getTime() + 1000 * 60 * 60 * 24 * 10 > new Date().getTime()) {
+                if (new Date(a[0].Time).getTime() + 1000 * 60 * 60 * 24 * 21 > new Date().getTime()) {
                     continue mainLoop;
                 }
             }
 
-            embed.addField(`__${names[i]} ${headlines[i]}__`, descriptions[i]);
+            embed.addField(`${team == `ALL` ? `${teamEmojis[teams[i]]} ` : ``}${names[i]} ${headlines[i]}`, descriptions[i]);
             fieldsAdded++;
 
             if (aExists) {

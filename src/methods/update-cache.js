@@ -233,11 +233,13 @@ module.exports = {
 		let currentDate = require(`../cache/today.json`).links.currentDate;
 
 		let json = await getJSON(`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json`);
-		let dates = json.leagueSchedule.gameDates;
+		let dates = json.leagueSchedule.gameDates, datePosition;
 		for (var i = 0; i < dates.length; i++) {
 			let d = new Date(dates[i].gameDate).toISOString().substring(0, 10).split(`-`).join(``);
 			if (d == currentDate) {
+				datePosition = i;
 				json = dates[i];
+				break;
 			}
 		}
 
@@ -258,6 +260,13 @@ module.exports = {
 			}
 			if (gamesMatching == json.games.length && gamesMatching == json2.games.length) {
 				json = json2;
+				
+				// If using todaysScoreboard_00, then can use scheduleLeagueV2_1 to update scores for day before
+				if (dates[datePosition - 1]) {
+					let yesterdayJSON = dates[datePosition - 1];
+					let yesterdayDate = new Date(yesterdayJSON.gameDate).toISOString().substring(0, 10).split(`-`).join(``);
+					fs.writeFileSync(`./cache/${yesterdayDate}/scoreboard.json`, JSON.stringify(yesterdayJSON), err => { if (err) throw err; });
+				}
 			}
 		}
 

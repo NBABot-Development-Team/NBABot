@@ -46,7 +46,7 @@ module.exports = async (date, userSpecified, teamSpecified) => {
                 }
             }
 
-            let bets = await query(con, `SELECT * FROM bets WHERE d${date} IS NOT NULL${(userSpecified) ? ` AND ID = "${userSpecified}"` : ``};`);
+            let bets = await query(con, `SELECT * FROM bets WHERE d${date} IS NOT NULL AND d${date} <> ""${(userSpecified) ? ` AND ID = "${userSpecified}"` : ``};`);
             console.log(`bets length: ${bets.length}`);
     
             userLoop: for (var i = 0; i < bets.length; i++) { // Cycling through each user with bets on that date
@@ -62,6 +62,7 @@ module.exports = async (date, userSpecified, teamSpecified) => {
                 user = user[0];
 
                 bet = bet[`d${date}`].split(`,`);
+                console.log(`${user.ID}: ${bet}`);
 
                 betLoop: for (var j = 0; j < bet.length; j++) { // Cycling through each bet on that date
                     if (bet[j].includes(`+`)) { // Parlay
@@ -100,15 +101,15 @@ module.exports = async (date, userSpecified, teamSpecified) => {
                         if (!allCorrect) {
                             description += `:red_square: ${teamEmojis[lostTeam]} lost, so whole parlay of ${teams.join(`, `)} lost → \`$0.00\` gained.\n`;
                             user.Wrong++;
+                            betsClaimed++;
                         } else {
                             // Parlay correct! Give them the money
                             description += `:green_square: ${teams.join(`, `)} won → \`$${details[2]}\` gained.`;
                             user.Correct++;
                             user.Balance += parseFloat(details[2]);
                             user.Balance = parseFloat(user.Balance.toFixed(2));
+                            betsClaimed++;
                         }
-
-                        betsClaimed++;
 
                         bet.splice(j, 1);
                     } else { // Normal bet

@@ -368,7 +368,6 @@ client.on(`messageCreate`, async message => {
 			if (!parseInt(date) || date.length != 8) return;
 
 			await claimBets(date);
-			return await message.channel.send(`Done`);
 			break;
 
 		case `update-peak`:

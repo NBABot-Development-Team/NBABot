@@ -92,7 +92,7 @@ module.exports = {
 
 			if (!json) {
 				if (today) {
-					json = await getJSON(`https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json`);
+					json = await getJSON(`https://nba-prod-us-east-1-mediaops-stats.s3.amazonaws.com/NBA/liveData/scoreboard/todaysScoreboard_00.json`);
 					json = json.scoreboard;
 				} else {
 					json = await getJSON(`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json`);

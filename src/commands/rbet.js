@@ -77,6 +77,8 @@ module.exports = {
         let betFound = false;
         if (!betsValid) return await interaction.reply({ content: `You did not place any bets on ${new Date(date.substring(0, 4), parseInt(date.substring(4, 6)) - 1, date.substring(6, 8)).toDateString()} (\`${date.substring(4, 6)}/${date.substring(6, 8)}/${date.substring(0, 4)}\`).` });        
         else {
+            if (!bets[0]) return await interaction.reply({ content: `No bets from you were found for that date.` });
+            if (!bets[0][`d${date}`]) return await interaction.reply({ content: `No bets from you were found for that date.` });
             bets = bets[0][`d${date}`].split(`,`);
             if (!bets) return await interaction.reply({ content: `No bets from you were found for that date.` });
 
@@ -94,6 +96,8 @@ module.exports = {
                             }
                         }
                     }
+
+                    console.log(`user ${interaction.user.id} retracted parlay ${bets[i]} from ${date}`);
 
                     // Retracting bet since all games haven't started
                     let user = await query(con, `SELECT * FROM users WHERE ID = "${interaction.user.id}";`);
@@ -118,6 +122,9 @@ module.exports = {
                 } else { // Normal bet
                     if (bets[i].split(`|`)[0] == team) {
                         betFound = true;
+
+                        // Logging
+                        console.log(`user ${interaction.user.id} retracted bet ${bets[i]} from ${date}`);
     
                         let user = await getUser(con, `users`, interaction.user.id);
                         user = user[0];

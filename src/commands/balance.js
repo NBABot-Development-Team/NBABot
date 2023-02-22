@@ -14,18 +14,27 @@ const query = require(`../methods/database/query.js`);
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('balance')
-		.setDescription('Get your balance in the simulated bettings system.'),
+		.setDescription('Get your balance in the simulated bettings system.')
+        .addUserOption(option => option.setName(`user`).setDescription(`Use this to see someone else's balance.`).setRequired(false)),
     
 	async execute(variables) {
 		let { interaction, con, ad } = variables;
 
-        let user = await getUser(con, `users`, interaction.user.id);
+        let specifiedUser = interaction.options.getUser(`user`);
+        
+        let ID;
+        if (!specifiedUser) ID = interaction.user.id;
+        else ID = specifiedUser.id; 
+
+        let username = specifiedUser ? `${specifiedUser.username}#${specifiedUser.discriminator}` : interaction.user.tag;
+
+        let user = await getUser(con, `users`, ID);
         user = user[0];
 
-        await require(`../methods/update-peak-positions.js`)(con, interaction.user.id);
+        await require(`../methods/update-peak-positions.js`)(con, ID);
 
         let embed = new Discord.MessageEmbed()
-            .setTitle(`__Balance for user ${interaction.user.tag}:__`)
+            .setTitle(`__Balance for user ${username}:__`)
             .setColor((user.FavouriteTeam == `NBA`) ? `#FF4242` : teamColors[user.FavouriteTeam])
             .setThumbnail(interaction.user.avatarURL())
             .setFooter({ text: `Note: the virtual currency used in NBABot's simulated betting system is NOT REAL and has no value.` })
@@ -36,7 +45,7 @@ module.exports = {
             .addField(`Betting Record`, `${user.Correct}-${user.Wrong} (${convertToPercentage(user.Correct, user.Correct + user.Wrong)})`, true);
 
         // Getting user position
-        let globalPosition = await query(con, `SELECT * FROM ( SELECT ID, Balance, Correct, Wrong, Guilds, @row := @row + 1 AS serial_num FROM users CROSS JOIN (SELECT @row := 0) r ORDER BY Balance DESC ) tmp WHERE ID = "${interaction.user.id}";`);
+        let globalPosition = await query(con, `SELECT * FROM ( SELECT ID, Balance, Correct, Wrong, Guilds, @row := @row + 1 AS serial_num FROM users CROSS JOIN (SELECT @row := 0) r ORDER BY Balance DESC ) tmp WHERE ID = "${ID}";`);
         if (globalPosition) {
             if (globalPosition[0]) {
                 if (globalPosition[0].serial_num) {
@@ -48,7 +57,7 @@ module.exports = {
             }
         }
 
-        let guildPosition = await query(con, `SELECT * FROM ( SELECT ID, Balance, Correct, Wrong, Guilds, @row := @row + 1 AS serial_num FROM (SELECT * FROM users WHERE LOCATE("${interaction.guild.id}", Guilds) > 1 ) temp2 CROSS JOIN (SELECT @row := 0) r ORDER BY Balance DESC ) tmp WHERE ID = "${interaction.user.id}";`);
+        let guildPosition = await query(con, `SELECT * FROM ( SELECT ID, Balance, Correct, Wrong, Guilds, @row := @row + 1 AS serial_num FROM (SELECT * FROM users WHERE LOCATE("${interaction.guild.id}", Guilds) > 1 ) temp2 CROSS JOIN (SELECT @row := 0) r ORDER BY Balance DESC ) tmp WHERE ID = "${ID}";`);
         if (guildPosition) {
             if (guildPosition[0]) {
                 if (guildPosition[0].serial_num) {

@@ -1,6 +1,7 @@
 // Libraries
 const fetch = require(`node-fetch`);
 const fs = require(`fs`);
+const cheerio = require(`cheerio`);
 
 // Assets
 const fullNames = require(`../assets/teams/full-names.json`);
@@ -11,14 +12,23 @@ const playerTeams = require(`../assets/players/an/teams.json`);
 // Methods
 const getJSON = require(`../methods/get-json.js`);
 const convertOdds = require(`../methods/convert-odds.js`);
+const getHTML = require(`../methods/get-html.js`);
+
+// https://api.actionnetwork.com/web/v1/standings/nba
 
 module.exports = {
     updatePlayerIDs: async function() {
         let IDs = {}, names = {}, playerTeams = {}, teamTricodes = {}, teamIDs = {}, roster = {};
 
+        // Getting buildID - hi to actionnetwork if you're seeing this!
+        let html = await getHTML(`https://www.actionnetwork.com/nba-game/wizards-timberwolves-score-odds-february-17-2023/174604`), buildID;
+        let $ = cheerio.load(html);
+        let object = JSON.parse($(`#__NEXT_DATA__`).text());
+        buildID = object.buildId;
+
         for (var team in fullNames) {
-            let name = fullNames[team].toLowerCase().replace(/ /g, `-`);
-            let json = await getJSON(`https://www.actionnetwork.com/_next/data/2rragNvwQvMuXUOIUznCA/nba/odds/${name}.json`);
+            let name = fullNames[team].toLowerCase().replace(/ /g, `-`); // f251fd26084f42fb9da1f44e2276f84a
+            let json = await getJSON(`https://www.actionnetwork.com/_next/data/${buildID}/nba/odds/${name}.json`);
             
             let players = json.pageProps.team.roster;
             teamTricodes[json.pageProps.team.id] = team;

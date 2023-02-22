@@ -15,6 +15,7 @@ const getJSON = require(`../methods/get-json.js`);
 const getUser = require(`../methods/database/get-user.js`);
 const updateUser = require(`../methods/database/update-user.js`);
 const query = require(`../methods/database/query.js`);
+const formatDuration = require(`../methods/format-duration.js`);
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -142,6 +143,8 @@ module.exports = {
         }
         payout = payout.toFixed(2);
 
+        if (payout == amount.toFixed(2)) return await interaction.reply(`You cannot place any bets with no potential gain.`);
+
         // Checking if the date is a column in bets, if not create
         let betsFromDate;
         try {
@@ -199,7 +202,7 @@ module.exports = {
             .setTitle(`${generalEmojis.success} Bet successfully placed.`)
             .setColor(0x5CB85C)
             .setDescription(`Your balance is now \`$${user.Balance.toFixed(2)}\`.`)
-            .addField(`Details:`, `**Game:** ${teams.join(` @ `)} on ${new Date(date.substring(0, 4), parseInt(date.substring(4, 6)) - 1, parseInt(date.substring(6, 8))).toDateString()}\n**Team**: ${team}\n**Amount placed**: $${parseInt(amount).toFixed(2)}\n**Possible payout**: $${parseInt(payout).toFixed(2)}`);
+            .addField(`Details:`, `**Game:** ${teams.join(` @ `)} on ${new Date(date.substring(0, 4), parseInt(date.substring(4, 6)) - 1, parseInt(date.substring(6, 8))).toDateString()}\n**Team**: ${team}\n**Amount placed**: $${parseFloat(amount).toFixed(2)}\n**Possible payout**: $${parseFloat(payout).toFixed(2)}`);
 
         if (ad) embed.setAuthor({ name: ad.text, url: ad.link, iconURL: ad.image });
         if (replacedBet) embed.setFooter({ text: `Note: Your previous bet of $${replacedBet[1]} on ${replacedBet[0]} was automatically replaced.` });
@@ -228,24 +231,79 @@ module.exports = {
             date = new Date(date.substring(0, 4), parseInt(date.substring(4, 6)) - 1, date.substring(6, 8));
 
             let str1 = `__${date.toDateString()} (${date2}):__`;
-            let str2 = ``;
+            let str2 = ``, str3 = ``;
 
             // e.g. OKC|10|29.30
+
+            let scoreboard;
+            try {
+                scoreboard = require(`../cache/${key.split(`d`).join(``)}/scoreboard.json`);
+            } catch (e) {
+                scoreboard = null;
+            }
 
             let totalPlaced = 0, totalPayout = 0;
             for (var i = 0; i < bets[key].split(`,`).length; i++) {
                 let details = bets[key].split(`,`)[i].split(`|`);
-                str2 += `\`$${parseFloat(details[1]).toFixed(2)}\` on ${teamEmojis[details[0]]} (payout: \`$${parseFloat(details[2]).toFixed(2)}\`)\n`;
+
+                // Trying to find opponent details
+                let opponent, startStr;
+                if (scoreboard) {
+                    gameLoop: for (var j = 0; j < scoreboard.games.length; j++) {
+                        if (scoreboard.games[j].awayTeam.teamTricode == details[0]) {
+                            opponent = ` @ ${teamEmojis[scoreboard.games[j].homeTeam.teamTricode]}`;
+                            if (scoreboard.games[j].gameStatus == 1) {
+                                if (scoreboard.games[j].gameDateTimeUTC) {
+                                    startStr = ` Starts ${formatDuration(new Date(scoreboard.games[j].gameDateTimeUTC).getTime())}`;
+                                } else if (scoreboard.games[j].gameTimeUTC) {
+                                    startStr = ` Starts ${formatDuration(new Date(scoreboard.games[j].gameTimeUTC).getTime())}`;
+                                }
+                            } else startStr = ` Game has started`;
+                            break gameLoop;
+                        } else if (scoreboard.games[j].homeTeam.teamTricode == details[0]) {
+                            opponent = ` v ${teamEmojis[scoreboard.games[j].awayTeam.teamTricode]}`;
+                            if (scoreboard.games[j].gameStatus == 1) {
+                                if (scoreboard.games[j].gameDateTimeUTC) {
+                                    startStr = ` Starts ${formatDuration(new Date(scoreboard.games[j].gameDateTimeUTC).getTime())}`;
+                                } else if (scoreboard.games[j].gameTimeUTC) {
+                                    startStr = ` Starts ${formatDuration(new Date(scoreboard.games[j].gameTimeUTC).getTime())}`;
+                                }
+                            } else startStr = ` Game has started`;
+                            break gameLoop;
+                        }
+                    }
+                }
+
+                let whoStr = ``;
+                if (details[0].includes(`+`)) {
+                    for (var p = 0; p < details[0].split(`+`).length; p++) {
+                        whoStr += teamEmojis[details[0].split(`+`)[p]];
+                        if (p < details[0].split(`+`).length - 1) whoStr += `, `;
+                    }
+                } else whoStr = teamEmojis[details[0]];
+
+                let temp = str2;
+                let addStr = `\`$${parseFloat(details[1]).toFixed(2)}\` on ${whoStr}${(opponent && !details[0].includes(`+`)) ? opponent : ``} (payout: \`$${parseFloat(details[2]).toFixed(2)}\`)${(startStr) ? ` |${startStr}` : ``}\n`;
+                if ((temp += addStr).length >= 1024) {
+                    str3 += addStr;
+                } else str2 += addStr;
+                
                 totalPlaced += parseFloat(details[1]);
                 totalPayout += parseFloat(details[2]);
             }
             
             if (bets[key].split(`,`).length > 1) {
-                str2 += `Total placed: \`$${totalPlaced.toFixed(2)}\`, Total payout: \`$${totalPayout.toFixed(2)}\`.`
+                let temp = str2;
+                let addStr = `\nTotal placed: \`$${totalPlaced.toFixed(2)}\`, Total payout: \`$${totalPayout.toFixed(2)}\`.`;
+                if ((temp += addStr).length >= 1024) {
+                    str3 += addStr;
+                } else str2 += addStr;
             }
 
             fields++;
             embed2.addField(str1, str2);
+
+            if (str3) embed2.addField(`...`, str3);
         }
 
         try {

@@ -35,7 +35,9 @@ let counter = 0;
 
 module.exports = {
 	async updateDate(con) {
-		let json = await getJSON(`https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json`);
+		let json = await fetch(`https://nba-prod-us-east-1-mediaops-stats.s3.amazonaws.com/NBA/liveData/scoreboard/todaysScoreboard_00.json`);
+
+		json = await json.json();
 
 		let gamesExist = true;
 		if (!json) gamesExist = false;
@@ -168,7 +170,11 @@ module.exports = {
 		delete require.cache[require.resolve(`../cache/today.json`)];
 		let currentDate = require(`../cache/today.json`).links.currentDate;
 
-		let json = await getJSON(`https://cdn.nba.com/static/json/liveData/odds/odds_todaysGames.json`);
+		let json = await fetch(`https://cdn.nba.com/static/json/liveData/odds/odds_todaysGames.json`, {
+			headers: config.headers
+		});
+
+		json = await json.json();
 		
 		gameLoop: for (var i = 0; i < json.games.length; i++) {
 			let currentDateObject = new Date(currentDate.substring(0, 4), parseInt(currentDate.substring(4, 6)) - 1, currentDate.substring(6, 8));
@@ -232,7 +238,10 @@ module.exports = {
 		delete require.cache[require.resolve(`../cache/today.json`)];
 		let currentDate = require(`../cache/today.json`).links.currentDate;
 
-		let json = await getJSON(`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json`);
+		let json = await fetch(`http://nba.cloud/league/00/2022-23/scheduleleaguev2?Format=json`);
+
+		json = await json.json();
+
 		let dates = json.leagueSchedule.gameDates, datePosition;
 		for (var i = 0; i < dates.length; i++) {
 			let d = new Date(dates[i].gameDate).toISOString().substring(0, 10).split(`-`).join(``);
@@ -245,8 +254,8 @@ module.exports = {
 
 		if (!json.games) {
 			json = {games: []};
-		} else {
-			let json2 = await getJSON(`https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json`);
+		} else { //https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json
+			let json2 = await getJSON(`https://nba-prod-us-east-1-mediaops-stats.s3.amazonaws.com/NBA/liveData/scoreboard/todaysScoreboard_00.json`);
 			json2 = json2.scoreboard;
 			let gamesMatching = 0;
 			jsonLoop: for (var i = 0; i < json.games.length; i++) {
@@ -306,7 +315,7 @@ module.exports = {
 		let currentDate = require(`../cache/today.json`).links.currentDate;
 		let currentDateObject = new Date(currentDate.substring(0, 4), parseInt(currentDate.substring(4, 6)) - 1, currentDate.substring(6, 8));
 
-		let json = await getJSON(`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json`);
+		let json = await getJSON(`http://nba.cloud/league/00/2022-23/scheduleleaguev2?Format=json`);
 		let dates = json.leagueSchedule.gameDates;
 		let counter = 0;
 		for (var i = 0; i < dates.length; i++) {
@@ -342,6 +351,7 @@ module.exports = {
 			console.log(`json.ok FALSE`);
 			return;
 		}
+
 		json = await json.json();
 		if (!json) {
 			console.log(`json FALSE`);

@@ -26,12 +26,10 @@ module.exports = async (date, userSpecified, teamSpecified) => {
                 // Can get cache
                 delete require.cache[require.resolve(`../cache/${date}/scoreboard.json`)];
                 json = require(`../cache/${date}/scoreboard.json`);
-                console.log(`Json is from here 1`)
             } else {
                 if (fs.existsSync(`./cache/${date}/scoreboard.json`)) {
                     delete require.cache[require.resolve(`../cache/${date}/scoreboard.json`)];
                     json = require(`../cache/${date}/scoreboard.json`);
-                    console.log(`Json is from here 2`)
                 } else {
                     json = await getJSON(`https://cdn.nba.com/static/json/staticData/scheduleLeagueV2_1.json`);
                     let dates = json.leagueSchedule.gameDates;
@@ -40,7 +38,6 @@ module.exports = async (date, userSpecified, teamSpecified) => {
                         d = d.toISOString().substring(0, 10).split(`-`).join(``);
                         if (d == date) {
                             json = dates[i];
-                            console.log(`Json is from here 3`)
                         }
                     }
                 }
@@ -65,6 +62,7 @@ module.exports = async (date, userSpecified, teamSpecified) => {
                 console.log(`${user.ID}: ${bet}`);
 
                 betLoop: for (var j = 0; j < bet.length; j++) { // Cycling through each bet on that date
+
                     if (bet[j].includes(`+`)) { // Parlay
                         let details = bet[j].split(`|`); // Key components of parlay: TEAMS|PLACED|PAYOUT
                         let teams = details[0].split(`+`); // All teams in parlay for that date
@@ -99,10 +97,17 @@ module.exports = async (date, userSpecified, teamSpecified) => {
                         }
 
                         if (!allCorrect) {
+                            // Logging
+                            console.log(`user ${user.ID} failed claim parlay ${bet[j]} on ${date}`);
+
+                            // Parlay wrong!
                             description += `:red_square: ${teamEmojis[lostTeam]} lost, so whole parlay of ${teams.join(`, `)} lost → \`$0.00\` gained.\n`;
                             user.Wrong++;
                             betsClaimed++;
                         } else {
+                            // Logging
+                            console.log(`user ${user.ID} won claim parlay ${bet[j]} on ${date}`);
+
                             // Parlay correct! Give them the money
                             description += `:green_square: ${teams.join(`, `)} won → \`$${details[2]}\` gained.`;
                             user.Correct++;
@@ -112,7 +117,9 @@ module.exports = async (date, userSpecified, teamSpecified) => {
                         }
 
                         bet.splice(j, 1);
-                    } else { // Normal bet
+                    } 
+                    
+                    else { // Normal bet
                         let details = bet[j].split(`|`);
                         if (teamSpecified) {
                             if (teamSpecified == details[0]) continue betLoop;
@@ -125,10 +132,16 @@ module.exports = async (date, userSpecified, teamSpecified) => {
                             if (!location) continue gameLoop;
 
                             if (parseInt(json.games[k][location].score) > parseInt(json.games[k][(location == `awayTeam` ? `homeTeam` : `awayTeam`)].score)) { // Bet won
+                                // Logging
+                                console.log(`user ${user.ID} won claim bet ${bet[j]} on ${date}`);
+
                                 user.Balance += parseFloat(details[2]);
                                 user.Correct++;
                                 description += `:green_square: ${teamEmojis[details[0]]} won → \`$${details[2]}\` gained.\n`;
                             } else { // Bet lost
+                                // Logging
+                                console.log(`user ${user.ID} failed claim bet ${bet[j]} on ${date}`);
+
                                 user.Wrong++;
                                 description += `:red_square: ${teamEmojis[details[0]]} lost → \`$0.00\` gained.\n`;
                             }

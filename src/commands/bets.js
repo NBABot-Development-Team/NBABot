@@ -98,13 +98,16 @@ module.exports = {
                     }
                 }
 
-                let whoStr;
+                let whoStr = ``;
                 if (details[0].includes(`+`)) {
-                    whoStr = details[0].split(`+`).join(`, `);
+                    for (var p = 0; p < details[0].split(`+`).length; p++) {
+                        whoStr += teamEmojis[details[0].split(`+`)[p]];
+                        if (p < details[0].split(`+`).length - 1) whoStr += `, `;
+                    }
                 } else whoStr = teamEmojis[details[0]];
 
                 let temp = str2;
-                let addStr = `\`$${parseFloat(details[1]).toFixed(2)}\` on ${whoStr}${(opponent && !details[0].includes(`+`)) ? opponent : ``} (payout: \`$${parseFloat(details[2]).toFixed(2)}\`)${(startStr) ? startStr : ``}\n`;
+                let addStr = `\`$${parseFloat(details[1]).toFixed(2)}\` on ${whoStr}${(opponent && !details[0].includes(`+`)) ? opponent : ``} (payout: \`$${parseFloat(details[2]).toFixed(2)}\`)${(startStr) ? ` |${startStr}` : ``}\n`;
                 if ((temp += addStr).length >= 1024) {
                     str3 += addStr;
                 } else str2 += addStr;
@@ -115,7 +118,7 @@ module.exports = {
             
             if (bets[key].split(`,`).length > 1) {
                 let temp = str2;
-                let addStr = `Total placed: \`$${totalPlaced.toFixed(2)}\`, Total payout: \`$${totalPayout.toFixed(2)}\`.`;
+                let addStr = `\nTotal placed: \`$${totalPlaced.toFixed(2)}\`, Total payout: \`$${totalPayout.toFixed(2)}\`.`;
                 if ((temp += addStr).length >= 1024) {
                     str3 += addStr;
                 } else str2 += addStr;

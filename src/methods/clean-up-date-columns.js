@@ -15,7 +15,7 @@ module.exports = async (con) => {
         let bets = await query(con, `SELECT d${date} FROM bets WHERE d${date} IS NOT NULL;`);
         let allNull = true;
         betLoop: for (var j = 0; j < bets.length; j++) {
-            if (bets[i][`d${date}`]) {
+            if (bets[j][`d${date}`]) {
                 allNull = false;
                 break betLoop;
             }

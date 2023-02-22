@@ -162,6 +162,7 @@ client.on(`guildCreate`, async guild => { // NBABot joins guild
 
 // On @NBABot message (mention)
 client.on(`messageCreate`, async message => {
+	let originalArgs = message.content.split(` `);
 	let args = message.content.toLowerCase().split(` `);
 	if (!args?.[0] || !args?.[1]) return;
 
@@ -350,12 +351,12 @@ client.on(`messageCreate`, async message => {
 			break;	
 
 		case `query`:
-			args.shift(); args.shift();
-			args = args.join(` `);
+			originalArgs.shift(); originalArgs.shift();
+			originalArgs = originalArgs.join(` `);
 
 			let q;
 			try {
-				q = await query(con, args);
+				q = await query(con, originalArgs);
 			} catch (e) {
 				return await message.channel.send(e);
 			}
@@ -804,34 +805,45 @@ let shardID;
 process.on(`message`, message => {
 	if (!message.type) return false;
 	if (message.type == `shardId`) shardID = message.data.shardId;
+	
+	// Now, if shard is 0, do the API requesting
+	if (parseInt(shardID) == 0) {
+		// Cache and updating stuff
+		methods.updateDate(con);
+		setInterval(async () => {
+			await methods.updateDate(con)
+		}, 1000 * 60 * 5);
+
+		methods.updateScores();
+		setInterval(methods.updateScores, 1000 * 20);
+
+		methods.updateFutureScores();
+		setInterval(methods.updateFutureScores, 1000 * 60 * 60);
+
+		methods.updateOddsNew();
+		setInterval(methods.updateOddsNew, 1000 * 60 * 30);
+
+		updateAn.updatePlayerIDs();
+		setInterval(updateAn.updatePlayerIDs, 1000 * 60 * 60 * 12);
+
+		/*
+		updateAn.updateProps();
+		setInterval(updateAn.updateProps, 1000 * 60 * 5); */
+
+		(async () => {
+			await methods.updateAllPlayers();
+		})();
+		setInterval(async () => {
+			await methods.updateAllPlayers();
+		}, 1000 * 60 * 60);
+	}
 });
 
 // Updating cache
 const methods = require(`./methods/update-cache.js`);
+const updateAn = require(`./methods/update-an.js`);
 const claimBets = require('./methods/claim-bets');
 const cleanUpDateColumns = require(`./methods/clean-up-date-columns.js`);
-
-// Cache and updating stuff
-methods.updateDate(con);
-setInterval(async () => {
-	await methods.updateDate(con)
-}, 1000 * 60 * 5);
-
-methods.updateScores();
-setInterval(methods.updateScores, 1000 * 20);
-
-methods.updateFutureScores();
-setInterval(methods.updateFutureScores, 1000 * 60 * 60);
-
-methods.updateOddsNew();
-setInterval(methods.updateOddsNew, 1000 * 60 * 30);
-
-(async () => {
-	await methods.updateAllPlayers();
-})();
-setInterval(async () => {
-	await methods.updateAllPlayers();
-}, 1000 * 60 * 60);
 
 function updateActivity() {
 	delete require.cache[require.resolve(`./config.json`)];

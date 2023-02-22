@@ -13,6 +13,17 @@
     <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg">
 </p>
 
+# Table of Contents
+  
+- [The Story Thus Far](#the-story-thus-far)
+- [Installation](#installation)
+- [Feature & Command List](#feature---command-list)
+- [How to Make a Contribution](#how-to-make-a-contribution)
+- [How to Support Us](#how-to-support-us)
+- [License](#license)
+
+  
+  
 # The Story Thus Far
 Hi, we're [Eliot](https://www.github.com/EliotChignell) and [Justin](https://www.github.com/freejstnalxndr), and we are the creators of NBABot. We met around 2018 when the project was in its very early stages. We are fans of the Suns and Knicks respectively, Eliot being from New Zealand, and Justin being from New York.
 
@@ -24,6 +35,8 @@ NBABot is truly influenced by our users feedback and our passion for the game of
  - Player Comparisons
 
 And many more. You can check it out by [inviting NBABot](https://discord.com/oauth2/authorize?client_id=544017840760422417&permissions=534723816512&scope=applications.commands%20bot), or using NBABot in our [support server](https://discord.gg/njhVCmF).
+  
+Feel free to check out our [website](https://nbabot.js.org/) as well.
 
 # Installation
 The installation of NBABot to run on your own is something that requires a previous knowledge of [discord.js](https://discord.js.org/#/), javascript, and basic coding principals. *We are working on documentation and expect some more news on this front soon.*
@@ -64,7 +77,37 @@ __**Watch a video guide for macOS here: [https://www.youtube.com/watch?v=H43I2qV
 
 **Note:** NBABot currently is only available in a limited form without the simulated betting and user settings, as those require a MySQL database on your computer. This will later be explained with a guide. If you are confident enough, you can try install MySQL, use the framework database `nba.sql`, then try the database commands, but I cannot guarantee they will work at this stage.
 In other words, betting commands do not work by default as they require installing MySQL.
+  
+# Feature & Discord Command List
+Below are a few of the available features. Use /help on Discord to view more.
+  
+  - /help
+<img src="https://user-images.githubusercontent.com/98583013/218332097-5a4c1f3e-17ef-46f6-ab30-ee7ac1b02c0a.png" width="500">
 
+  
+ - /scores
+<img src="https://user-images.githubusercontent.com/98583013/218332251-327ce266-9a23-4f5d-8f2d-04d969bd4241.png" width="500">
+
+  
+ - /bet 
+<img src="https://user-images.githubusercontent.com/98583013/218332655-f3566e58-119d-410f-beba-53f0248d91f5.png" width="500">
+
+ - /news
+<img src="https://user-images.githubusercontent.com/98583013/218332494-07eaba32-1c58-450c-adea-acdd3ab6917f.png" width="500">
+
+
+ - /compare-players
+<img src="https://user-images.githubusercontent.com/98583013/218332571-5da0b2e2-e17b-4757-9211-b5d36a4d160e.png" width="500">
+
+
+
+# How to Make a Contribution
+1. Find something to work on: View open issues on github or join our [support server](https://discord.gg/njhVCmF) and view the todo channel to find potential features to implement - or create your own idea.
+2. Build locally: Follow installation instructions to run NBABot on your local machine.
+3. Make changes: Write code locally, testing as you go.
+4. Update documentation: Adjust README.md to correspond to any additional features added.
+5. Submit a pull request: Add a description of changes and create a pull request to the main repository.
+  
 # How to Support Us
 NBABot, as much as it is a passion project, is very time consuming and involves a lot of upfront cost. We hope to not only one day be able to pay for the server costs (around $90 USD per month), but also further development and in bringing on other experts to help us with Web Development or marketing.
 

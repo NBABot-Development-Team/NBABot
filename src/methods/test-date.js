@@ -14,7 +14,7 @@ const getUser = require("./database/get-user.js");
 const updateUser = require("./database/update-user.js");
 
 async function update() {
-    let json = await getJSON(`https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json`);
+    let json = await getJSON(`https://nba-prod-us-east-1-mediaops-stats.s3.amazonaws.com/NBA/liveData/scoreboard/todaysScoreboard_00.json`);
 
     let gamesExist = true;
     if (!json) gamesExist = false;

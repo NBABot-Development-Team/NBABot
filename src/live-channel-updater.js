@@ -160,13 +160,13 @@ async function Scores() {
                 }
             }
         } else {
-            b = await getJSON(`https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json`);
+            b = await getJSON(`https://nba-prod-us-east-1-mediaops-stats.s3.amazonaws.com/NBA/liveData/scoreboard/todaysScoreboard_00.json`);
             b = b?.scoreboard;
         }
 	}
 
     /* temp
-    b = await getJSON(`https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json`);
+    b = await getJSON(`https://nba-prod-us-east-1-mediaops-stats.s3.amazonaws.com/NBA/liveData/scoreboard/todaysScoreboard_00.json`);
     b = b?.scoreboard; */
 
     if (!b) return;

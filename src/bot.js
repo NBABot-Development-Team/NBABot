@@ -3,6 +3,8 @@ let config = require(`./config.json`);
 let runningOriginalNBABot = config.runningOriginalNBABot;
 let runDatabase = config.runDatabase;
 
+const databaseCommands = config.commands.database;
+
 // Libraries
 const Discord = require(`discord.js`);
 const fs = require(`fs`);
@@ -23,6 +25,7 @@ const createUser = require(`./methods/database/create-user.js`);
 const query = require(`./methods/database/query.js`);
 const formatDuration = require(`./methods/format-duration.js`);
 const randInt = require(`./methods/randint.js`);
+const updateCommands = require(`./methods/update-commands.js`);
 
 // Core Discord variables
 const client = new Discord.Client({ intents: [Discord.Intents.FLAGS.GUILDS, Discord.Intents.FLAGS.GUILD_MESSAGES] });
@@ -31,8 +34,8 @@ const client = new Discord.Client({ intents: [Discord.Intents.FLAGS.GUILDS, Disc
 client.commands = new Discord.Collection();
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 commandLoop: for (const file of commandFiles) {
-	let databaseInvolvedCommands = [`balance`, `bet`, `bets`, `claim`, `img-add`, `img-delete`, `img`, `imgs`, `leaderboard`, `rbet`, `reset-balance`, `settings`];
-	if (databaseInvolvedCommands.includes(file.split(`.`)[0]) && !runDatabase) continue commandLoop;
+	if (databaseCommands.includes(file.split(`.`)[0]) && !runDatabase) continue commandLoop;
+
 	const command = require(`./commands/${file}`);
 	client.commands.set(command.data.name, command);
 }
@@ -50,6 +53,7 @@ if (runDatabase) {
 	con.connect();
 }
 
+
 client.on(`ready`, async () => {
 	module.exports = { con, client, runDatabase, shardID, sortOutShards };
 	clientReady = true;
@@ -58,6 +62,7 @@ client.on(`ready`, async () => {
 	updateActivity();
 	await sortOutShards();
 
+	// Purges empty columns from bets table once old enough
 	await cleanUpDateColumns(con);
 	setInterval(async () => {
 		await cleanUpDateColumns(con);
@@ -67,97 +72,21 @@ client.on(`ready`, async () => {
 	setInterval(DonatorScores, 1000 * 60);
 });
 
-function updateCommands(ID) {
-	return new Promise(async resolve => {
-		// Getting command data
-		const commands = [];
-		const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
-
-		let version = await query(con, `SELECT * FROM guilds WHERE ID = "current";`);
-		version = version[0].Version;
-		let guildResult = await query(con, `SELECT * FROM guilds WHERE ID = "${ID}";`), guildExists = true;
-		if (!guildResult) guildExists = false;
-		else if (guildResult.length == 0) guildExists = false;
-
-		if (guildExists) {
-			await query(con, `UPDATE guilds SET Version = ${version} WHERE ID = "${ID}";`);
-			guildResult = guildResult[0];
-		} else {
-			await query(con, `INSERT INTO guilds VALUES ("${ID}", ${version}, "y", NULL);`);
-			guildResult = {ID: ID, Version: version, Betting: `y`};
-		}
-
-		commandLoop: for (const file of commandFiles) {
-			let databaseInvolvedCommands = [`balance`, `bet`, `bets`, `claim`, `img-add`, `img-delete`, `img`, `imgs`, `leaderboard`, `rbet`, `reset-balance`, `settings`];
-			if (databaseInvolvedCommands.includes(file.split(`.`)[0]) && !runDatabase) continue commandLoop;
-
-			let bettingCommands = config.commands.betting;
-			if (guildResult.Betting == `n` && bettingCommands.includes(file.split(`.`)[0])) continue commandLoop;
-			
-			const command = require(`./commands/${file}`);
-			commands.push(command.data.toJSON());
-		}
-
-		const rest = new REST({ version: '9' }).setToken(config.token);
-		rest.put(Routes.applicationGuildCommands(config.clientId, ID), { body: commands })
-			.then(async () => {
-				resolve();
-			})
-			.catch(err => {
-				// I dont really care if I can't add commands, the server needs to add that
-				resolve();
-			});
-	});
-}
-
 async function updateAllServerCommands() {
 	// Getting all servers
 	client.shard.fetchClientValues(`guilds.cache`)
 		.then(async res => {
 			for (var i = 0; i < res.length; i++) {
 				for(var j = 0; j < res[i].length; j++) {
-					if (j % 25 == 0) console.log(`${i}: ${j}/${res[i].length}`);
-					await updateCommands(res[i][j].id);
+					if (j % 25 == 0) console.log(`Shard ${i}: done ${j}/${res[i].length}`);
+					await updateCommands(res[i][j].id, con);
 				}
 			}
 		});
 }
 
 client.on(`guildCreate`, async guild => { // NBABot joins guild
-	const commands = [];
-	const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
-
-	let version = await query(con, `SELECT Version FROM guilds WHERE ID = "current";`);
-	version = version[0].Version;
-	let guildResult = await query(con, `SELECT * FROM guilds WHERE ID = "${guild.id}";`), guildExists = true;
-	if (!guildResult) guildExists = false;
-	else if (guildResult.length == 0) guildExists = false;
-
-	if (guildExists) {
-		await query(con, `UPDATE guilds SET Version = ${version} WHERE ID = "${guild.id}";`);
-		guildResult = guildResult[0];
-	} else {
-		await query(con, `INSERT INTO guilds VALUES ("${guild.id}", ${version}, "y", NULL);`);
-		guildResult = {ID: guild.id, Version: version, Betting: `y`};
-	}
-
-	commandLoop: for (const file of commandFiles) {
-		let databaseInvolvedCommands = [`balance`, `bet`, `bets`, `claim`, `img-add`, `img-delete`, `img`, `imgs`, `leaderboard`, `rbet`, `reset-balance`, `settings`];
-		if (databaseInvolvedCommands.includes(file.split(`.`)[0]) && !runDatabase) continue commandLoop;
-
-		let bettingCommands = config.commands.betting;
-		if (guildResult.Betting == `n` && bettingCommands.includes(file.split(`.`)[0])) continue commandLoop;
-
-		const command = require(`./commands/${file}`);
-		commands.push(command.data.toJSON());
-	}
-
-	const rest = new REST({ version: '9' }).setToken(config.token);
-
-	rest.put(Routes.applicationGuildCommands(config.clientId, guild.id), { body: commands })
-		.then(async () => {
-			console.log(`Successfully registered application commands for guild ${guild.id}.`);
-		});
+	await updateCommands(guild.id, con);
 });
 
 // On @NBABot message (mention)
@@ -167,51 +96,14 @@ client.on(`messageCreate`, async message => {
 	if (!args?.[0] || !args?.[1]) return;
 
 	if (args[1].toLowerCase() == `update`) {
-		let msg = await message.channel.send(`Updating...`);
+		let result = await updateCommands(message.guild.id, con);
 
-		const commands = [];
-		const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
-
-		let version = await query(con, `SELECT Version FROM guilds WHERE ID = "current";`);
-		version = version[0].Version;
-		let guild = await query(con, `SELECT * FROM guilds WHERE ID = "${message.guild.id}";`), guildExists = true;
-		if (!guild) guildExists = false;
-		else if (guild.length == 0) guildExists = false;
-
-		if (guildExists) {
-			await query(con, `UPDATE guilds SET Version = ${version} WHERE ID = "${message.guild.id}";`);
-			guild = guild[0];
+		if (result) {
+			console.log(`Successfully registered application commands for guild ${message.guild.id}.`);
+			return await msg.edit(`Slash commands successfully added, enjoy!`);
 		} else {
-			await query(con, `INSERT INTO guilds VALUES ("${message.guild.id}", ${version}, "y", NULL);`);
-			guild = {ID: message.guild.id, Version: version, Betting: `y`};
+			return await msg.edit(`:no_entry_sign: Unable to add slash commands, give NBABot permission here: **https://discord.com/api/oauth2/authorize?client_id=544017840760422417&permissions=534723816512&scope=bot%20applications.commands**.`);
 		}
-
-		commandLoop: for (const file of commandFiles) {
-			let databaseInvolvedCommands = [`balance`, `bet`, `bets`, `claim`, `img-add`, `img-delete`, `img`, `imgs`, `leaderboard`, `rbet`, `reset-balance`, `settings`];
-			if (databaseInvolvedCommands.includes(file.split(`.`)[0]) && !runDatabase) continue commandLoop;
-
-			let bettingCommands = config.commands.betting;
-			if (guild.Betting == `n` && bettingCommands.includes(file.split(`.`)[0])) continue commandLoop;
-			
-			const command = require(`./commands/${file}`);
-			commands.push(command.data.toJSON());
-		}
-
-		const rest = new REST({ version: '9' }).setToken(config.token);
-
-		rest.put(Routes.applicationGuildCommands(config.clientId, message.guild.id), { body: commands })
-			.then(async () => {
-				console.log('Successfully registered application commands for guild ${message.guild.id}.');
-
-				return await msg.edit(`Slash commands successfully added, enjoy!`);
-			})
-			.catch(async error => {
-				if (error) {
-					console.log(error);
-					return await msg.edit(`:no_entry_sign: Unable to add slash commands, give NBABot permission here: **https://discord.com/api/oauth2/authorize?client_id=544017840760422417&permissions=534723816512&scope=bot%20applications.commands**.`);
-				}
-			});
-
 	}
 
 	// Cutoff for admin-based commands
@@ -423,14 +315,6 @@ client.on(`messageCreate`, async message => {
 				}
 			};
 
-			/* [{
-				label: `${c} stats`,
-				data: data,
-				fill: false,
-				borderColor: `rgb(75, 192, 192)`,
-				tension: 0.1
-			}] */
-
 			for (var i = 0; i < c.length; i++) {
 				configuration.data.datasets.push({
 					label: c[i],
@@ -535,14 +419,6 @@ client.on(`messageCreate`, async message => {
 					}
 				}
 			};
-
-			/* [{
-				label: `${c} stats`,
-				data: data,
-				fill: false,
-				borderColor: `rgb(75, 192, 192)`,
-				tension: 0.1
-			}] */
 
 			let image2 = await chart2.renderToBuffer(configuration2, `image/png`);
 			let img2 = new Discord.MessageAttachment(image2, `stats.png`);
@@ -677,20 +553,21 @@ client.on(`interactionCreate`, async interaction => {
 		console.log(`[${localTime.toISOString()}][${interaction.guild.id}][${interaction.user.id}]: ${interaction.commandName}`)
 	}
 
-	let guild = await query(con, `SELECT * FROM guilds WHERE ID = "${interaction.guild.id}";`), guildExists = true;
-	if (!guild) guildExists = false;
-	else if (guild.length == 0) guildExists = false;
+	let betting, ad = null;
+	if (runDatabase) {
+		let guild = await query(con, `SELECT * FROM guilds WHERE ID = "${interaction.guild.id}";`), guildExists = true;
+		if (!guild) guildExists = false;
+		else if (guild.length == 0) guildExists = false;
+	
+		if (guildExists) {
+			guild = guild[0];
+		} else {
+			await query(con, `INSERT INTO guilds VALUES ("${message.guild.id}", ${version}, "y", NULL);`);
+			guild = {ID: message.guild.id, Version: version, Betting: `y`};
+		}
 
-	if (guildExists) {
-		guild = guild[0];
-	} else {
-		await query(con, `INSERT INTO guilds VALUES ("${message.guild.id}", ${version}, "y", NULL);`);
-		guild = {ID: message.guild.id, Version: version, Betting: `y`};
-	}
-
-	let betting = (guild.Betting == `y`) ? true : false;
-
-	let ad = null;
+		betting = (guild.Betting == `y`) ? true : false;
+	} else betting = false;
 
 	// Sorting out whether ads/betting is allowed
 	if (runDatabase) {
@@ -759,7 +636,6 @@ client.on(`interactionCreate`, async interaction => {
 			}
 		}
 
-
 		try {
 			await command.execute({ interaction, client, con, ad, betting, shardID });
 		} catch (error) {
@@ -768,6 +644,7 @@ client.on(`interactionCreate`, async interaction => {
 			return interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
 		}
 	} else {
+		// Just normal command running
 		try {
 			await command.execute({ interaction, client });
 		} catch (error) {
@@ -801,6 +678,12 @@ process.on(`exit`, () => {
 	con.end();
 });
 
+// Updating cache
+const methods = require(`./methods/update-cache.js`);
+const updateAn = require(`./methods/update-an.js`);
+const claimBets = require('./methods/claim-bets');
+const cleanUpDateColumns = require(`./methods/clean-up-date-columns.js`);
+
 let shardID;
 process.on(`message`, message => {
 	if (!message.type) return false;
@@ -828,7 +711,8 @@ process.on(`message`, message => {
 
 		/*
 		updateAn.updateProps();
-		setInterval(updateAn.updateProps, 1000 * 60 * 5); */
+		setInterval(updateAn.updateProps, 1000 * 60 * 5); 
+		*/
 
 		(async () => {
 			await methods.updateAllPlayers();
@@ -838,12 +722,6 @@ process.on(`message`, message => {
 		}, 1000 * 60 * 60);
 	}
 });
-
-// Updating cache
-const methods = require(`./methods/update-cache.js`);
-const updateAn = require(`./methods/update-an.js`);
-const claimBets = require('./methods/claim-bets');
-const cleanUpDateColumns = require(`./methods/clean-up-date-columns.js`);
 
 function updateActivity() {
 	delete require.cache[require.resolve(`./config.json`)];
@@ -914,7 +792,7 @@ async function DonatorScores() {
 		}
 	}
 	if (!json) {
-		json = await getJSON(`https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json`);
+		json = await getJSON(`https://nba-prod-us-east-1-mediaops-stats.s3.amazonaws.com/NBA/liveData/scoreboard/todaysScoreboard_00.json`);
 	}
 
     // Checking if the API reponse is valid
@@ -1037,7 +915,7 @@ async function DonatorScores() {
     } 
 }
 
-async function sortOutShards() { // Assigning shard locations to 
+async function sortOutShards() { // Assigning shard locations to auto-scores servers
 	let users = await query(con, `SELECT * FROM users WHERE Donator = "f";`);
 	for (var i = 0; i < users.length; i++) {
 		let user = users[i];

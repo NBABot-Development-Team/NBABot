@@ -254,7 +254,7 @@ module.exports = {
 
 		if (!json.games) {
 			json = {games: []};
-		} else { //https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json
+		} else { //https://nba-prod-us-east-1-mediaops-stats.s3.amazonaws.com/NBA/liveData/scoreboard/todaysScoreboard_00.json
 			let json2 = await getJSON(`https://nba-prod-us-east-1-mediaops-stats.s3.amazonaws.com/NBA/liveData/scoreboard/todaysScoreboard_00.json`);
 			json2 = json2.scoreboard;
 			let gamesMatching = 0;

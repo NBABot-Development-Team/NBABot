@@ -85,39 +85,5 @@ module.exports = {
 				return;
 				break;
 		}
-		/*
-		switch(user.Donator) {
-			case `y`:
-				await query(con, `UPDATE users SET AdFreeServer = "${interaction.guild.id}" WHERE ID = "${interaction.user.id}";`);
-
-        		return await interaction.reply(`Success! This server should no longer have ads. Note: there can only be 1 ad-free server per user at a time for NBA Champion Donators.`);
-				break;
-
-			case `f`:
-				let AdFreeServers = user.AdFreeServer.split(`,`), serverNames = [];
-				if (AdFreeServers.length < 3) { // Just add
-					AdFreeServers.push(interaction.guild.id);
-					for (var i = 0; i < AdFreeServers.length; i++) {
-						let guild = await client.guilds.fetch(AdFreeServers[i]);
-						serverNames.push(guild.name);
-					}
-					await query(con, `UPDATE users SET AdFreeServer = "${AdFreeServers.join(`,`)}" WHERE ID = "${interaction.user.id}";`);
-        			return await interaction.reply(`Success! This server should no longer have ads. Note: there can only be 3 ad-free server per user at a time for Finals MVP Donators.\nYour current ad-free servers are \`${serverNames.join(`, `)}\``);
-				} else { // Remove first then add
-					AdFreeServers.shift();
-					AdFreeServers.push(interaction.guild.id);
-					for (var i = 0; i < AdFreeServers.length; i++) {
-						let guild = await client.guilds.fetch(AdFreeServers[i]);
-						serverNames.push(guild.name);
-					}
-					await query(con, `UPDATE users SET AdFreeServer = "${AdFreeServers.join(`,`)}" WHERE ID = "${interaction.user.id}";`);
-        			return await interaction.reply(`Success! This server should no longer have ads. Note: there can only be 3 ad-free server per user at a time for Finals MVP Donators.\nYour current ad-free servers are \`${serverNames.join(`, `)}\``);
-				}
-				break;
-			
-			default:
-				return await interaction.reply(`Only donators can remove ads from a server. Learn more with \`/donate\`.`);
-				break;
-		}*/
 	},
 };
